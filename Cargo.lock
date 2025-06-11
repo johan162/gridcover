@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "gridcover"
-version = "0.1.0"
+version = "1.0.0-beta-000001"
 dependencies = [
  "chrono",
  "clap",
