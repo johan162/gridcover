@@ -6,16 +6,18 @@ GridCover is a simulation program that models how an autonomous lawn mower cuts 
 <img src="assets/example-r_4_-w_500_-g_400_-s_0.5_-x_1_-y_1_-v_1_-c_99_-S_99_-C_true.png" width="100">
 <img src="assets/example-c_75_-C_false.png" width="80">
 
-*Fig 1: Examples of paths that cover the area*
+*Fig 1: Examples of simulated paths that cover an area*
 
 ## Overview
 
 This program simulates a robotic lawn mower with a circular cutting blade that moves across a rectangular lawn area. The mower follows a realistic physics model where:
 
-- The mower moves in straight lines until it hits a boundary
+- The mower moves in straight lines with option probability based perturberation until it hits a boundary
 - Upon hitting a boundary, it bounces off at an angle (with optional random perturbation)
 - The simulation tracks which areas of the lawn have been completely covered by the cutting blade
 - The program generates both terminal output and PNG images showing the coverage pattern
+- Two different type of cutter geometry can be used: Circular and blade A circular cutter models a traditoinal lawn mower where the knife covers the entire diameter of the rotating cutter. The blade types models modern robotic cutters where a 3-4cm knife is attached to the outer edge of a rotating disc.
+- To give an accurate estimation of the simulated time an optional battery run-time and charge time can be specified (tis will also include a simulated time for the cutter to find its charging station)
 
 The simulation is particularly useful for:
 - Optimizing lawn mower path algorithms
