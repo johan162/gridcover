@@ -122,7 +122,11 @@ gridcover -r 4 -w 500 -g 400 -s 0.5 -x 1 -y 1 -c 99 --verbosity 1 -S 99 -C false
 - `-y, --start-y <START_Y>` - Starting Y coordinate for mower center (default: 0, randomized)
 - `--dir-x <DIR_X>` - Direction X component (default: 0, randomized)
 - `--dir-y <DIR_Y>` - Direction Y component (default: 0, randomized)
-- `-p, --perturb <PERTURB>` - Enable random angle perturbation on bounces (default: true)
+- `-T, --cutter-type <CUTTER-TYPE>` Cutter type to use for the simulation. Options: 'blade', 'circular'. [default: blade]
+- `--blade-len <BLADE_LEN>` - Length of knife blade in units (default: 0.05)
+- `-B, --battery-run-time <BATTERY_RUN_TIME>` Battery duration in minutes for the cutter [default: 0]
+- `-A, --battery-charge-time <BATTERY_CHARGE_TIME>` Battery charging time in minutes for the cutter when it runs out [default: 0]
+
 
 ### Stopping Conditions
 At least one stopping condition must be specified:
@@ -134,19 +138,30 @@ At least one stopping condition must be specified:
 - `-d, --stop-distance <DISTANCE>` - Stop after mower travels this distance (default: 0, disabled)
 
 ### Output Configuration
-- `[IMAGE-FILE-NAME]` - Output PNG image filename (default: coverage_grid.png)
+- `-o [IMAGE-FILE-NAME]` - Output PNG image filename (default: coverage_grid.png)
 - `--image-width <WIDTH>` - Output image width in mm (50-500, default: 200)
 - `--image-height <HEIGHT>` - Output image height in mm (50-500, default: 200)
+- `--dpi <DPI>` - Output image DPI (default: 300)
+- `-C, --track-center <TRACK_CENTER>` Add option to turn centerpoint tracking on or off [default: true] [possible values: true, false]
+- `-J, --json-output <JSON_OUTPUT>` Print results as a json object [default: false] [possible values: true, false]
 - `--verbosity <LEVEL>` - Verbosity level 0-2 (default: 0)
-  - 0: Minimal output
-  - 1: Show simulation parameters and results
+  - 0: Minimal output with only result shown
+  - 1: Show simulation parameters and results + additional info
   - 2: Include an ASCII version to count the initial legs color coded and numbered (only applicable for grids ≤100×100)
+
+### Simulation Parameters
+- `-z, --step-size <STEP_SIZE>` - Simulation step size in units if not specified will be calculated from the square size (default: 0)
+- `-S, --random-seed <SEED>` - Random seed for reproducible results (default: 0, random)
+- `-p, --perturb <PERTURB>` - Enable random angle perturbation on bounces (default: true)
+- `--perturb-segment <PERTURB_SEGMENT>` Use perturbation randomly while moving in a straight line [default: false] [possible values: true, false]
+- `--perturb-segment-percent <PERTURB_SEGMENT_PERCENT>` Perturb segment percent chance per cell travelled
+
 
 ### Performance and Behavior Options
 - `-P, --parallel <PARALLEL>` - Enable parallel processing (default: true)
-- `-S, --random-seed <SEED>` - Random seed for reproducible results (default: 0, random)
 - `-C, --track-center <TRACK_CENTER>` - Track mower center position in image (default: true)
 - `-R, --show-progress <SHOW_PROGRESS>` - Show progress bar during simulation (default: true)
+- `-o <IMAGE-FILE-NAME>` - Output image file name
 
 ## Understanding the Output
 
@@ -305,32 +320,75 @@ gridcover -r 4 -w 500 -g 400 -s 0.5 -x 1 -y 1 -v 1 -c 99 -S 99
 ```txt
 Usage: gridcover [OPTIONS] [IMAGE-FILE-NAME]
 
-Arguments:
-  [IMAGE-FILE-NAME]  Output image file name
+Usage: gridcover [OPTIONS]
 
 Options:
-  -r, --radius <RADIUS>                Radius of the circle (default: 0.3) [default: 0.3]
-  -w, --width <WIDTH>                  Grid width in cells (default: 200) [default: 500]
-  -g, --height <HEIGHT>                Grid height in cells (default: 200) [default: 500]
-  -s, --square-size <SQUARE_SIZE>      Size of each grid square (default: 0.2) [default: 0.1]
-  -x, --start-x <START_X>              Starting X coordinate for the circle center (default: 0) [default: 0]
-  -y, --start-y <START_Y>              Starting Y coordinate for the circle center (default: 0) [default: 0]
-  -v, --velocity <VELOCITY>            Movement velocity in units/second (default: 0.5) [default: 0.5]
-      --dir-x <DIR_X>                  Direction X component (default: random) [default: 0]
-      --dir-y <DIR_Y>                  Direction Y component (default: random) [default: 0]
-  -p, --perturb <PERTURB>              Use perturbation angle for direction changes (default: true) [default: true] [possible values: true, false]
-  -b, --stop-bounces <STOP_BOUNCES>    Maximum number of bounces before ending simulation (default: 10) [default: 0]
-  -t, --stop-time <STOP_TIME>          Maximum simulated time when to stop (0 use bounce count) [default: 0]
-  -c, --stop-coverage <STOP_COVERAGE>  Stop when we have reached this coverage percentage (default: 0.0, means no limit) This is a soft limit, the simulation will still run until the specified bounces or time is reached if specified [default: 0]
-  -m, --stop-simsteps <STOP_SIMSTEPS>  Stop when we have reached the specified number of simulation steps (default: 0, means no limit) [default: 0]
-  -d, --stop-distance <STOP_DISTANCE>  Stop when we have reached the specified distance covered (default: 0.0, means no limit) [default: 0]
-      --verbosity <VERBOSITY>          Verbosity during simulation (default: 0) [default: 0]
-  -P, --parallel <PARALLEL>            Use parallel processing to speed up simulation (default: true) [default: true] [possible values: true, false]
-  -S, --random-seed <RANDOM_SEED>      Random seed for the simulation to be able to reproduce results If not specified, a random seed will be generated [default: 0]
-      --image-width <IMAGE_WIDTH>      Image output width in mm (50-500) [default: 200]
-      --image-height <IMAGE_HEIGHT>    Image output height in mm (50-500) [default: 200]
-  -C, --track-center <TRACK_CENTER>    Add option to turn centerpoint tracking on or off [default: true] [possible values: true, false]
-  -R, --show-progress <SHOW_PROGRESS>  Show progress bar during simulation (default: true) [default: true] [possible values: true, false]
-  -h, --help                           Print help
-  -V, --version                        Print version
+  -o <IMAGE-FILE-NAME>
+          Output image file name
+  -z, --step-size <STEP_SIZE>
+          Simulation step size in units if not specified will be calculated from the square size [default: 0]
+  -r, --radius <RADIUS>
+          Radius of the circle [default: 0.2]
+  -l, --blade-len <BLADE_LEN>
+          Length of knife blade [default: 0.05]
+  -w, --grid-width <GRID_WIDTH>
+          Grid width in cells [default: 500]
+  -g, --grid-height <GRID_HEIGHT>
+          Grid height in cells [default: 500]
+  -s, --square-size <SQUARE_SIZE>
+          Size of each grid square [default: 0]
+  -x, --start-x <START_X>
+          Starting X coordinate for the circle center [default: 0]
+  -y, --start-y <START_Y>
+          Starting Y coordinate for the circle center [default: 0]
+  -v, --velocity <VELOCITY>
+          Movement velocity in units/second [default: 0.5]
+      --dir-x <DIR_X>
+          Direction X component [default: 0]
+      --dir-y <DIR_Y>
+          Direction Y component [default: 0]
+  -p, --perturb <PERTURB>
+          Use perturbation angle for direction changes at bounce [default: true] [possible values: true, false]
+      --perturb-segment <PERTURB_SEGMENT>
+          Use perturbation randomly while moving in a straight line [default: false] [possible values: true, false]
+      --perturb-segment-percent <PERTURB_SEGMENT_PERCENT>
+          Perturb segment percent chance per cell travelled [default: 0.5]
+  -b, --stop-bounces <STOP_BOUNCES>
+          Maximum number of bounces before ending simulation [default: 0]
+  -t, --stop-time <STOP_TIME>
+          Maximum simulated time when to stop [default: 0]
+  -c, --stop-coverage <STOP_COVERAGE>
+          Stop when we have reached this coverage percentage This is a soft limit, the simulation will still run until the specified bounces or time is reached if specified [default: 0]
+  -m, --stop-simsteps <STOP_SIMSTEPS>
+          Stop when we have reached the specified number of simulation steps [default: 0]
+  -d, --stop-distance <STOP_DISTANCE>
+          Stop when we have reached the specified distance covered [default: 0]
+      --verbosity <VERBOSITY>
+          Verbosity during simulation [default: 0]
+  -P, --parallel <PARALLEL>
+          Use parallel processing to speed up simulation [default: true] [possible values: true, false]
+  -S, --random-seed <RANDOM_SEED>
+          Random seed for the simulation to be able to reproduce results If not specified, a random seed will be generated [default: 0]
+      --image-width-mm <IMAGE_WIDTH_MM>
+          Image output width in mm (50-1000) [default: 200]
+      --image-height-mm <IMAGE_HEIGHT_MM>
+          Image output height in mm (50-1000) [default: 200]
+  -C, --track-center <TRACK_CENTER>
+          Add option to turn centerpoint tracking on or off [default: true] [possible values: true, false]
+  -R, --show-progress <SHOW_PROGRESS>
+          Show progress bar during simulation (default: true) [default: true] [possible values: true, false]
+  -T, --cutter-type <CUTTER-TYPE>
+          Cutter type to use for the simulation. Options: 'blade', 'circular'. [default: blade] [possible values: blade, circular]
+  -J, --json-output <JSON_OUTPUT>
+          Print results as a json object [default: false] [possible values: true, false]
+  -D, --dpi <DPI>
+          DPI setting for image output (default: 300) [default: 300]
+  -B, --battery-run-time <BATTERY_RUN_TIME>
+          Battery duration in minutes for the cutter [default: 0]
+  -A, --battery-charge-time <BATTERY_CHARGE_TIME>
+          Battery charging time in minutes for the cutter when it runs out [default: 0]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
 ```

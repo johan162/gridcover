@@ -1,17 +1,22 @@
 use crate::model::CoverageInfo;
+use crate::model::CutterType;
 
 // Ugly. We set the times_visited counter to a really high value we are very, very unlikely to reach
 // to indicate that this is a center point of the circle. This is used to color the center point differently.pub
 pub const CENTERPOINT_MAGIC_CONSTANT: usize = 9999;
 
+
 /// Check if a grid cell is completely covered by the circle
+#[allow(clippy::too_many_arguments)]
 pub fn is_cell_covered(
     circle_x: f64,
     circle_y: f64,
     radius: f64,
+    blade_len: f64,
     cell_x: usize,
     cell_y: usize,
     square_size: f64,
+    cutter_type: CutterType,
 ) -> bool {
     // Calculate the coordinates of the four corners of the cell
     let cell_left = cell_x as f64 * square_size;
@@ -27,12 +32,26 @@ pub fn is_cell_covered(
         (cell_right, cell_top),    // Top-right
     ];
 
-    // A corner is inside the circle if its distance from the circle center is less than or equal to the radius
-    corners.iter().all(|(x, y)| {
-        let dx = x - circle_x;
-        let dy = y - circle_y;
-        dx * dx + dy * dy <= radius * radius
-    })
+    if cutter_type == CutterType::Blade {
+        let radius_inner = radius - blade_len;
+        // A cell is covered by the knife blade if it is within the outer and inner radius
+        corners.iter().all(|(x, y)| {
+            let dx = x - circle_x;
+            let dy = y - circle_y;
+            dx * dx + dy * dy <= radius * radius
+        }) && corners.iter().all(|(x, y)| {
+            let dx = x - circle_x;
+            let dy = y - circle_y;
+            dx * dx + dy * dy >= radius_inner * radius_inner
+        })
+    } else {
+        // A cell is covered by the circle if all corners are within the radius
+        corners.iter().all(|(x, y)| {
+            let dx = x - circle_x;
+            let dy = y - circle_y;
+            dx * dx + dy * dy <= radius * radius
+        })
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -40,37 +59,43 @@ pub fn mark_covered_cells(
     circle_x: f64,
     circle_y: f64,
     radius: f64,
+    blade_len: f64,
     square_size: f64,
     grid_width: usize,
     grid_height: usize,
-    bounce_number: usize,
+    bounce_count: usize,
     coverage_grid: &mut [Vec<CoverageInfo>],
     track_center: bool,
     parallel: bool,
+    cutter_type: CutterType
 ) {
     if parallel {
         mark_covered_cells_parallel(
             circle_x,
             circle_y,
             radius,
+            blade_len,
             square_size,
             grid_width,
             grid_height,
-            bounce_number,
+            bounce_count,
             coverage_grid,
             track_center,
+            cutter_type,
         );
     } else {
         mark_covered_cells_linear(
             circle_x,
             circle_y,
             radius,
+            blade_len,
             square_size,
             grid_width,
             grid_height,
-            bounce_number,
+            bounce_count,
             coverage_grid,
             track_center,
+            cutter_type,
         );
     }
 }
@@ -81,12 +106,14 @@ fn mark_covered_cells_linear(
     circle_x: f64,
     circle_y: f64,
     radius: f64,
+    blade_len: f64,
     square_size: f64,
     grid_width: usize,
     grid_height: usize,
-    bounce_number: usize,
+    bounce_count: usize,
     coverage_grid: &mut [Vec<CoverageInfo>],
     track_center: bool,
+    cutter_type: CutterType,
 ) {
     // Calculate the bounding box of the circle to optimize the search
     let min_x = ((circle_x - radius) / square_size).floor().max(0.0) as usize;
@@ -116,21 +143,22 @@ fn mark_covered_cells_linear(
         {
             let x = x_offset; // x is the actual x-coordinate as we're skipping to min_x
 
-            if is_cell_covered(circle_x, circle_y, radius, x, y, square_size) {
+            if is_cell_covered(circle_x, circle_y, radius, blade_len, x, y, square_size, cutter_type) {
                 // Only mark the cell if it hasn't been covered before
                 if !cell.covered {
                     *cell = CoverageInfo {
                         covered: true,
-                        bounce_number,
+                        bounce_number: bounce_count,
                         times_visited: 1,
                     };
                 } else {
-                    // If we are still on the same leg we don't increase the bounce number
-                    if bounce_number != cell.bounce_number {
+                    // If we are still on the same leg we don't increase the bounce count
+                    // but we increase the times visited counter
+                    if bounce_count != cell.bounce_number {
                         if !track_center || cell.times_visited != CENTERPOINT_MAGIC_CONSTANT {
                             cell.times_visited += 1;
                         }
-                        cell.bounce_number = bounce_number; // Update to the latest bounce number
+                        cell.bounce_number = bounce_count; // Update to the latest bounce number
                     }
                 }
             }
@@ -143,7 +171,7 @@ fn mark_covered_cells_linear(
         let center_y = (circle_y / square_size).round() as usize;
         if center_x < grid_width && center_y < grid_height {
             coverage_grid[center_y][center_x].covered = true;
-            coverage_grid[center_y][center_x].bounce_number = bounce_number;
+            coverage_grid[center_y][center_x].bounce_number = bounce_count;
             coverage_grid[center_y][center_x].times_visited = CENTERPOINT_MAGIC_CONSTANT;
         }
     }
@@ -155,12 +183,14 @@ fn mark_covered_cells_parallel(
     circle_x: f64,
     circle_y: f64,
     radius: f64,
+    blade_len: f64,
     square_size: f64,
     grid_width: usize,
     grid_height: usize,
-    bounce_number: usize,
+    bounce_count: usize,
     coverage_grid: &mut [Vec<CoverageInfo>],
     track_center: bool,
+    cutter_type: CutterType,
 ) {
     let min_x = ((circle_x - radius) / square_size).floor().max(0.0) as usize;
     let max_x = ((circle_x + radius) / square_size)
@@ -185,18 +215,18 @@ fn mark_covered_cells_parallel(
                 .skip(min_x)
                 .take(max_x - min_x + 1)
             {
-                if is_cell_covered(circle_x, circle_y, radius, x, y, square_size) {
+                if is_cell_covered(circle_x, circle_y, radius, blade_len, x, y, square_size, cutter_type) {
                     if !cell.covered {
                         *cell = CoverageInfo {
                             covered: true,
-                            bounce_number,
+                            bounce_number: bounce_count,
                             times_visited: 1,
                         };
-                    } else if bounce_number != cell.bounce_number {
+                    } else if bounce_count != cell.bounce_number {
                         if !track_center || cell.times_visited != CENTERPOINT_MAGIC_CONSTANT {
                             cell.times_visited += 1;
                         }
-                        cell.bounce_number = bounce_number;
+                        cell.bounce_number = bounce_count;
                     }
                 }
             }
@@ -208,7 +238,7 @@ fn mark_covered_cells_parallel(
         let center_y = (circle_y / square_size).round() as usize;
         if center_x < grid_width && center_y < grid_height {
             coverage_grid[center_y][center_x].covered = true;
-            coverage_grid[center_y][center_x].bounce_number = bounce_number;
+            coverage_grid[center_y][center_x].bounce_number = bounce_count;
             coverage_grid[center_y][center_x].times_visited = CENTERPOINT_MAGIC_CONSTANT;
         }
     }

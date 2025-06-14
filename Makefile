@@ -250,14 +250,14 @@ qinst: br ## Quick install: Build and install the package on the host architectu
 bump-build: ## Increment alpha/beta build number (e.g., X.Y.Z-alpha-000001 -> X.Y.Z-alpha-000002)
 	@current_version=$(APP_VERSION_PKG) ; \
 	echo "Current version in Cargo.toml: $$current_version"; \
-    if echo "$$current_version" | grep -qE '^(.*)-(alpha|beta)-([0-9]{6})$$'; then \
-        base_part=$$(echo "$$current_version" | sed -E 's/^(.*)-(alpha|beta)-([0-9]{6})$$/\1/'); \
-        prerelease_label=$$(echo "$$current_version" | sed -E 's/^(.*)-(alpha|beta)-([0-9]{6})$$/\2/'); \
-        build_digits_str=$$(echo "$$current_version" | sed -E 's/^(.*)-(alpha|beta)-([0-9]{6})$$/\3/'); \
+    if echo "$$current_version" | grep -qE '^(.*)-(alpha|beta)([1-9]*)-([0-9]{4})$$'; then \
+        base_part=$$(echo "$$current_version" | sed -E 's/^(.*)-(alpha[1-9]*|beta[1-9]*)-([0-9]{4})$$/\1/'); \
+        prerelease_label=$$(echo "$$current_version" | sed -E 's/^(.*)-(alpha[1-9]*|beta[1-9]*)-([0-9]{4})$$/\2/'); \
+        build_digits_str=$$(echo "$$current_version" | sed -E 's/^(.*)-(alpha[1-9]*|beta[1-9]*)-([0-9]{4})$$/\3/'); \
         \
         build_digits_int=$$((10#$$build_digits_str)); \
         new_build_digits_int=$$((build_digits_int + 1)); \
-        new_build_digits_str_padded=$$(printf "%06d" $$new_build_digits_int); \
+        new_build_digits_str_padded=$$(printf "%04d" $$new_build_digits_int); \
         \
         updated_version="$$base_part-$$prerelease_label-$$new_build_digits_str_padded"; \
         echo "Attempting to update version to: $$updated_version"; \
@@ -271,9 +271,9 @@ bump-build: ## Increment alpha/beta build number (e.g., X.Y.Z-alpha-000001 -> X.
             if [ -f Cargo.toml.bak ]; then echo "Restoring Cargo.toml from backup."; mv Cargo.toml.bak Cargo.toml; fi; \
         fi; \
     else \
-        echo "Version '$$current_version' is not in 'X.Y.Z-(alpha|beta)-NNNNNN' format."; \
+        echo "Version '$$current_version' is not in 'X.Y.Z-(alpha[1-9]*|beta[1-9]*)-NNNN' format."; \
         echo "No build number incremented. To start an alpha/beta series, manually edit Cargo.toml"; \
-        echo "to a format like '1.0.0-alpha-000001'."; \
+        echo "to a format like '1.0.0-alpha1-0001'."; \
     fi
 
 mac-install: pkg ## Install the macOS package

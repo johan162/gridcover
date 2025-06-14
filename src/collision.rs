@@ -1,41 +1,11 @@
 use rand::Rng;
 
-pub struct BoundingBox {
-    min_x: f64,
-    max_x: f64,
-    min_y: f64,
-    max_y: f64,
-}
-
-impl BoundingBox {
-    fn new(min_x: f64, max_x: f64, min_y: f64, max_y: f64) -> Self {
-        Self {
-            min_x,
-            max_x,
-            min_y,
-            max_y,
-        }
-    }
-    pub fn init(width: usize, height: usize, radius: f64, square_size: f64) -> Self {
-        let min_x = radius;
-        let max_x = (width as f64) * square_size - radius;
-        let min_y = radius;
-        let max_y = (height as f64) * square_size - radius;
-        Self::new(min_x, max_x, min_y, max_y)
-    }
-    pub fn limit_x(&self, x: f64) -> f64 {
-        x.max(self.min_x).min(self.max_x)
-    }
-    pub fn limit_y(&self, y: f64) -> f64 {
-        y.max(self.min_y).min(self.max_y)
-    }
-}
 
 #[allow(clippy::too_many_arguments)]
 pub fn check_collision(
     next_pos_x: f64,
     next_pos_y: f64,
-    bb: &BoundingBox,
+    bb: &crate::model::BoundingBox,
     dir_x: &mut f64,
     dir_y: &mut f64,
     circle_pos_x: &mut f64,

@@ -15,7 +15,7 @@ pub fn save_grid_image(
     coverage_grid: &[Vec<CoverageInfo>],
     sim_model: &crate::model::SimModel,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Convert mm to pixels (300 DPI for quality printing)
+    // Convert mm to pixels (300 DPI for quality monitors)
     // 254 pixels per inch, 25.4 mm per inch is what we get on quality monitors
     let pixels_per_mm = 254.0 / 25.4;
 
@@ -26,13 +26,13 @@ pub fn save_grid_image(
     // Calculate cell size to ensure perfect squares
     // Take the smaller dimension to make sure image fits within requested size
     let cell_size = std::cmp::min(
-        base_img_width / sim_model.width as u32,
-        base_img_height / sim_model.height as u32,
+        base_img_width / sim_model.grid_width as u32,
+        base_img_height / sim_model.grid_height as u32,
     );
 
     // Recalculate image dimensions using the uniform cell size
-    let img_width = cell_size * sim_model.width as u32;
-    let img_height = cell_size * sim_model.height as u32;
+    let img_width = cell_size * sim_model.grid_width as u32;
+    let img_height = cell_size * sim_model.grid_height as u32;
 
     // Create a new RGB image buffer
     let mut img = image::RgbImage::new(img_width, img_height);
@@ -40,7 +40,7 @@ pub fn save_grid_image(
     // Define colors used in grid``
     const GRID_COLOR: [u8; 3]  = [150, 150, 150]; // Dark gray
     const CENTER_COLOR: [u8; 3] = [255, 255, 255]; // White (for center points)
-    const GREEN_SHADES: [[u8; 3]; 20] = [
+    const GREEN_SHADES: [[u8; 3]; 21] = [
         [240, 255, 240], // Honeydew (very light green)
         [220, 255, 220],
         [200, 255, 200],
@@ -60,7 +60,8 @@ pub fn save_grid_image(
         [6, 60, 6],
         [4, 40, 4],
         [2, 20, 2],
-        [0, 64, 0], // Pure dark green
+        [0, 64, 0],
+        [0, 44, 0],  // Pure dark green
     ];
 
     // Fill the image with grid color first
@@ -71,7 +72,7 @@ pub fn save_grid_image(
     // Draw colored cells for covered areas
     for (y, row) in coverage_grid.iter().enumerate() {
         // Convert grid y to image y (invert y axis to match terminal output)
-        let img_y = sim_model.height - 1 - y;
+        let img_y = sim_model.grid_height - 1 - y;
 
         for (x, info) in row.iter().enumerate() {
             if info.covered {
@@ -101,7 +102,7 @@ pub fn save_grid_image(
     }
 
     // Save the image
-    img.save(&sim_model.output_file)?;
+    img.save(&sim_model.image_file_name)?;
     
     Ok(())
 }

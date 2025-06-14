@@ -7,10 +7,9 @@ mod sim;
 
 use cells::{calc_grid_coverage, print_grid};
 use clap::Parser;
-use collision::BoundingBox;
 use colored::Colorize;
 use image::save_grid_image;
-use model::{CoverageInfo, init_model};
+use model::{init_model};
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
 
@@ -18,6 +17,23 @@ fn main() {
     // Record timestamp what the simulation started
     let start_time = chrono::Utc::now();
     let args = args::Args::parse();
+
+    let args_string = format!("{args:#?}");
+    // Converts all args to a string for logging purposes
+    if args.verbosity > 0 {
+        println!(
+            "{}\n{}",
+            "Simulation started at:".color(colored::Color::Green).bold(),
+            start_time.to_rfc3339()
+        );
+        println!(
+            "{}\n{}\n",
+            "Arguments used for the simulation:".color(colored::Color::Green).bold(),
+            args_string
+        );
+    }
+
+   
 
     // Setup random generator with a possible seed from user
     let mut rng = if args.random_seed > 0 {
@@ -41,25 +57,13 @@ fn main() {
         }
     };
 
-    // Setup data structure (matrix) that Tgracks which cells were covered and during
-    // which bounce in matrix
-    let mut coverage_grid = vec![vec![CoverageInfo::new(); sim_model.width]; sim_model.height];
-
-    // Calculate the bounding box for the simulation area (the edge of the circle is always within the bounding box)
-    let bounding_box = BoundingBox::init(
-        sim_model.width,
-        sim_model.height,
-        sim_model.radius,
-        sim_model.square_size,
-    );
-
     if args.verbosity > 0 {
         sim_model.print_simulation_parameters();
         println!("\nStarting simulation ... ");
     }
 
     // Start the simulation loop
-    simulation_loop(&mut sim_model, &bounding_box, &mut coverage_grid, &mut rng);
+    simulation_loop(&mut sim_model, &mut rng);
 
     // Use start time to find out how long the simulation took
     let end_time = chrono::Utc::now();
@@ -76,7 +80,7 @@ fn main() {
     }
 
     let (current_coverage_count, current_coverage_percent) =
-        calc_grid_coverage(&coverage_grid, sim_model.parallel);
+        calc_grid_coverage(&sim_model.coverage_grid, sim_model.parallel);
 
     sim_model.coverage_percent = current_coverage_percent;
     sim_model.coverage_count = current_coverage_count;
@@ -84,7 +88,7 @@ fn main() {
     if args.verbosity > 1 {
         println!("\n");
         // If either the width or height are larger than 100 don't print the grid to the terminal
-        if sim_model.width > 100 || sim_model.height > 100 {
+        if sim_model.grid_width > 100 || sim_model.grid_height > 100 {
             println!(
                 "{}\n",
                 "Note: Grid is too large for comfortable terminal output."
@@ -92,23 +96,31 @@ fn main() {
                     .bold()
             );
         } else {
-            println!("Grid size: {}x{}", sim_model.width, sim_model.height);
-            print_grid(sim_model.width, sim_model.height, &coverage_grid);
+            println!(
+                "Grid size: {}x{}",
+                sim_model.grid_width, sim_model.grid_height
+            );
+            print_grid(
+                sim_model.grid_width,
+                sim_model.grid_height,
+                &sim_model.coverage_grid,
+            );
             println!();
         }
     }
 
-    sim_model.print_simulation_results();
+    if args.json_output {
+        sim_model.print_simulation_results_json();
+    } else {
+        sim_model.print_simulation_results();
+    }
 
     if args.verbosity > 0 {
         println!("\nSaving image...");
     }
 
     // Save the coverage grid as a PNG image
-    if let Err(err) = save_grid_image(
-        &coverage_grid,
-        &sim_model,
-    ) {
+    if let Err(err) = save_grid_image(&sim_model.coverage_grid, &sim_model) {
         eprintln!(
             "{} {}",
             "Error saving image:".color(colored::Color::Red).bold(),
