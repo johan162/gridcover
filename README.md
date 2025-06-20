@@ -2,12 +2,6 @@
 
 GridCover is a simulation program that models how an autonomous lawn mower cuts grass in a large rectangular area. The simulation tracks the circular cutting path of the mower as it moves across the lawn, bouncing off boundaries and changing direction to achieve complete grass coverage.
 
-<img src="assets/example-r_4_-w_500_-g_400_-s_0.5_-x_1_-y_1_-v_1_-c_99_-S_99_-C_false.png" width="100">
-<img src="assets/example-r_4_-w_500_-g_400_-s_0.5_-x_1_-y_1_-v_1_-c_99_-S_99_-C_true.png" width="100">
-<img src="assets/example-c_75_-C_false.png" width="80">
-
-*Fig 1: Examples of simulated paths that cover an area*
-
 ## Overview
 
 This program simulates a robotic lawn mower with a circular cutting blade that moves across a rectangular lawn area. The mower follows a realistic physics model where:
@@ -19,11 +13,6 @@ This program simulates a robotic lawn mower with a circular cutting blade that m
 - Two different type of cutter geometry can be used: Circular and blade A circular cutter models a traditoinal lawn mower where the knife covers the entire diameter of the rotating cutter. The blade types models modern robotic cutters where a 3-4cm knife is attached to the outer edge of a rotating disc.
 - To give an accurate estimation of the simulated time an optional battery run-time and charge time can be specified (tis will also include a simulated time for the cutter to find its charging station)
 
-The simulation is particularly useful for:
-- Optimizing lawn mower path algorithms
-- Analyzing coverage efficiency for different lawn sizes and mower configurations
-- Testing autonomous mower behavior in various scenarios
-- Educational purposes for robotics and path planning
 
 ## Features
 
@@ -58,57 +47,22 @@ Run a basic simulation with default parameters:
 ```bash
 gridcover --stop-coverage 50
 ```
+or the equivalent with short arguments
+```bash
+gridcover -c 50
+```
 
 This will simulate a lawn mower with:
+- A lawn 10x10 unit size (with default values for speed, radious etc. this is consistent with a 10x10m grid)
+- The area will be divided in 400x400 cells (each 0.025 unit size)
+- Each cell representing 0.025 unit × 0.025 units
 - Run the simulation until 50% of the lawn has been cut
-- Circular cutting blade radius of 0.3 units (default)
-- 50×50 units total area, divided in 500x500 cells
-- Each cell representing 0.1×0.1 units
+- Circular cutting size is 0.2 units (default)
 - Random starting direction
 - Random starting position
-- Output image of paths covered saved as `coverage_grid.png`
+- Will write progress information during simulation
+- Will print a short summary of simulation result
 
-### Common Examples
-
-**Quick 10-bounce simulation:**
-```bash
-gridcover --stop-bounces 10 --verbosity 1
-```
-
-**Coverage-based simulation (stop at 80% coverage):**
-```bash
-gridcover --stop-coverage 80 --verbosity 1
-```
-
-**Time-based simulation (stop after 3600 simulated seconds = 1h):**
-```bash
-gridcover --stop-time 3600 --verbosity 1
-```
-
-**Large lawn with bigger mower:**
-```bash
-gridcover --width 1000 --height 800 --radius 0.5 --stop-coverage 85
-```
-
-**Reproducible simulation with specific seed:**
-```bash
-gridcover --random-seed 12345 --stop-bounces 20 --verbosity 2
-```
-
-**Custom output file:**
-```bash
-gridcover  my_lawn_simulation.png --stop-bounces 15
-```
-
-**High-precision simulation:**
-```bash
-gridcover --square-size 0.05 --width 1000 --height 1000 --stop-coverage 90
-```
-
-**Using the short version of command line arguments:**
-```bash
-gridcover -r 4 -w 500 -g 400 -s 0.5 -x 1 -y 1 -c 99 --verbosity 1 -S 99 -C false -R true
-```
 
 ## Command Line Arguments
 
@@ -141,6 +95,7 @@ At least one stopping condition must be specified:
 
 ### Output Configuration
 - `-o [IMAGE-FILE-NAME]` - Output PNG image filename (default: coverage_grid.png)
+- `-Z, --paper-size <PAPER-SIZE>` - Paper size to use for the output image, (A0,A1,A2,A3,A4,A5,Letter,Legal) (default: a4)
 - `--image-width <WIDTH>` - Output image width in mm (50-500, default: 200)
 - `--image-height <HEIGHT>` - Output image height in mm (50-500, default: 200)
 - `--dpi <DPI>` - Output image DPI (default: 300)
@@ -157,6 +112,8 @@ At least one stopping condition must be specified:
 - `-p, --perturb <PERTURB>` - Enable random angle perturbation on bounces (default: true)
 - `--perturb-segment <PERTURB_SEGMENT>` Use perturbation randomly while moving in a straight line [default: false] [possible values: true, false]
 - `--perturb-segment-percent <PERTURB_SEGMENT_PERCENT>` Perturb segment percent chance per cell travelled
+- `args-write-file-name [ARGS-FILE-NAME]` - Write program arguments file in TOML format
+- `-i, args-read-file-name [ARGS-FILE-NAME]` - Read program arguments from a TOML file, arguments also specified on the command line will override the file
 
 
 ### Performance and Behavior Options
@@ -168,35 +125,114 @@ At least one stopping condition must be specified:
 ## Understanding the Output
 
 ### Terminal Output
-The program provides detailed statistics including:
-- Simulation parameters (grid size, mower radius, etc.)
-- Final coverage percentage and cell counts
-- Total distance traveled by the mower
-- Number of wall bounces
-- Simulation time (both real and simulated)
-- Total simulation steps executed
+The default output is only a short summary of the simulation results:
+- Time for the lawn mover (in simulation time to reach the stop condition)
+- The theoretical minimum time to over the area
+- Coverage
+- Distance traveled
+- Number of bounces, how many time the cutter hit the edge and reverted direction
+- Battery information, (not enabled in this example)
 
-**Example Output**
+
+**Example Text Output**
 ```txt
 $ gridcover -c 50
-Coverage: 50.02% (125040/250000 cells covered) - Bounces: 100 - Sim-Time: 02:02:34
+Coverage:  50.02% (  80035/ 160000 cells covered), Distance: 190.80, Bounces:   32, Sim-Time: 00:10:35
 
 Simulation Results:
-  Simulation completed in  : 00:04
-  Simulated elapsed time   : 2:02:34
-  Coverage                 : 50.0% (125040 out of 250000 cells)
-  Distance traveled:       : 3677.4 units
-  Number of bounces:       : 100
-  Total Simulation Steps   : 40,860 (Using step size = 0.09 units)
+  Simulation time          : 00:00
+  Simulated elapsed time   : 0:10:35
+  Theoretical minimum time : 0:06:57
+  Coverage                 : 50.0% (80,035 out of 160,000 cells)
+  Distance traveled:       : 190.8 units
+  Number of bounces:       : 32
+  Battery Charge Count     : 0
+  Battery Charge Left      : 100.0%
+  Total Simulation Steps   : 12,720 (Step size = 0.01 units, Sim steps/cell = 0.60)
 ```
+
+To get a more complete output you can enable output in JSON format. This will give all simulation results togeher will all important simulation parameters
+
+**Example JSON Output**
+```txt
+$ gridcover -c 50 -J true
+Coverage:  50.01% (  80012/ 160000 cells covered), Distance: 194.40, Bounces:   32, Sim-Time: 00:10:47
+{
+  "Simulation Result": {
+    "Coverage": {
+      "Bounce count": 32,
+      "Count": 80012,
+      "Percent": 50.00750000000001
+    },
+    "Cutter": {
+      "Battery": {
+        "Charge count": 0,
+        "Charge left (percent)": 100.0,
+        "Charge time": 120.0,
+        "Run time": 0.0
+      },
+      "Blade Length": 0.05,
+      "Cells covered": 256.0,
+      "Distance": 194.39999999994407,
+      "Radius": 0.2,
+      "Type": "blade",
+      "Velocity": 0.3
+    },
+    "Grid": {
+      "Area": 160000,
+      "Cell size": 0.025,
+      "Cells x": 400,
+      "Cells y": 400,
+      "Height": 10.0,
+      "Width": 10.0
+    },
+    "Output image": {
+      "DPI": 300,
+      "File name": "",
+      "Paper size": {
+        "height_mm": 297.0,
+        "paper_size": "A4",
+        "width_mm": 210.0
+      },
+      "Pixels": {
+        "height": 3508,
+        "width": 2480
+      }
+    },
+    "Start": {
+      "Angle (degrees)": 30.366393199230345,
+      "Direction": {
+        "X": 0.8628103345831091,
+        "Y": 0.5055277702921802
+      },
+      "Position": {
+        "X": 2.3411700813678884,
+        "Y": 1.8522634664794135
+      }
+    },
+    "Steps": {
+      "Per cell": 0.6,
+      "Size": 0.015,
+      "Total": 12960
+    },
+    "Time": {
+      "Efficiency": 64.35,
+      "Min. Time": "00:06:57",
+      "Real": "00:00",
+      "Simulation": "00:10:47"
+    }
+  }
+}
+```
+
 
 ### Visual Output
 The generated PNG image uses a color-coded system:
-- **Black areas**: Uncovered lawn areas
+- **Dark grey areas**: Uncovered lawn areas
 - **Colored areas**: Covered areas, with different shades representing how often a spot has been visited. The darker the cell the more visits
 - **White dots**: Mower center positions (if tracking enabled)
 
-The image is scaled to the specified dimensions (default 200×200mm) suitable for printing or analysis.
+The image is scaled to the specified dimensions (default A4 size) suitable for printing or analysis. Note since the program is not a image processing program the chosen output size must be large enough to have enough pixels to match the number of cells
 
 ### Grid Display (Terminal)
 For small grids (≤100×100 cells) with verbosity level 2, a text representation is shown:
@@ -209,80 +245,12 @@ For small grids (≤100×100 cells) with verbosity level 2, a text representatio
 - **Parallel processing**: Enabled by default, uses multiple CPU cores for faster simulation
 - **Grid size**: Larger grids require more memory and computation time
 - **Step size**: Automatically calculated based on mower radius for optimal accuracy
-- **Release builds**: Use `--release` flag for significantly better performance
+- **Release builds**: Use `--release` flag for better performance
 
-## Technical Details
-
-### Principle
-- The area is divided in WxH cells (or squares)
-- Each cell has a given size R*R 
-- This gives an operational area in simulation units of (WxR) x (HxR)
-- A unit can be thought of as cm, dm, m, km etc. As long as it is consistent and velocity is given as unit/s
-- The velocity does not impact the simulation speed, it will only impact the displayed simulation time
-
-### Physics Model
-- The mower moves in straight lines at constant velocity
-- Wall collisions reverse the appropriate velocity component
-- Optional random perturbation (±60°) adds realistic behavior variation
-- Coverage is determined by checking if all corners of each grid cell are within the cutting radius
-
-### Simulation Accuracy
-- Step size is automatically set to 9/10 of the square size. This guarantees that a simulation step never skips a cell 
-- Grid resolution can be adjusted via `--square-size` for higher precision
-- The simulation uses floating-point arithmetic for smooth movement
-
-### Memory Usage
-- Memory usage scales with grid size: O(width × height)
-- Each cell stores coverage status and bounce tracking information
-- Large simulations (1000×1000+) may require several GB of RAM
-
-## Examples by Use Case
-
-### Quick Testing
-```bash
-# Fast 10-bounce test
-cargo run --release -- --stop-bounces 10 --width 100 --height 100
-```
-
-### Coverage Analysis
-```bash
-# Analyze coverage patterns
-cargo run --release -- --stop-coverage 95 --verbosity 2 --track-center false lawn_coverage.png
-```
-
-### Performance Benchmarking
-```bash
-# Large-scale performance test
-cargo run --release -- --width 2000 --height 2000 --stop-coverage 85 --verbosity 1
-```
-
-```bash
-# Large-scale performance test disabling parallel processing
-cargo run --release -- --width 2000 --height 2000 --stop-coverage 85 --verbosity 1 --parallel false
-```
-
-
-### Algorithm Development
-```bash
-# Reproducible test for algorithm comparison
-cargo run --release -- --random-seed 42 --stop-bounces 50 --verbosity 2
-```
 
 ## Limitations
 - Partial covered cells are not counted, only fully covered cells are counted as cut. With small enough cells this is not an issue.
-
-## Troubleshooting
-
-### Common Issues
-1. **"No stopping condition set"**: Specify at least one stopping condition (-b, -t, -c, -m, or -d)
-2. **Large memory usage**: Reduce grid size or increase square-size for large simulations
-3. **Slow performance**: Ensure you're using `--release` builds and consider disabling parallel processing for very small grids
-
-### Performance Tips
-- Use release builds (`cargo run --release`) for production simulations
-- Enable parallel processing for large grids (enabled by default)
-- Consider increasing square-size for very large simulations to reduce memory usage. Take notice that cell size must be smaller than 2*radius as otherwise a cell can never be fully covered by the cutter
-- Use appropriate stopping conditions to avoid extremely long simulations
+- Memory usage is O(WxH) as the whole grid is in memory
 
 ## License
 
@@ -292,51 +260,75 @@ MIT License
 
 ## Without center tracking
 
-<img src="assets/example-r_4_-w_500_-g_400_-s_0.5_-x_1_-y_1_-v_1_-c_99_-S_99_-C_false.png" width="500">
-
-Generated with
+Using defaults and stop simulation at 50% coverage
 
 ```bash
-gridcover -r 4 -w 500 -g 400 -s 0.5 -x 1 -y 1 -v 1 -c 99 -S 99 -C false
+gridcover -c 90 -o assets/coverage-c50.png
 ```
+<img src="assets/coverage-c50.png" width="300">
 
-<img src="assets/example-c_75_-C_false.png" width="450">
-
+Using defaults and stop simulation at 99% coverage
 
 ```bash
-gridcover -c 75 -C false
-```
+gridcover -c 99 -o assets/coverage-c99.png
+``` 
+<img src="assets/coverage-c99.png" width="300">
+
 
 ## With center point tracking
 
-<img src="assets/example-r_4_-w_500_-g_400_-s_0.5_-x_1_-y_1_-v_1_-c_99_-S_99_-C_true.png" width="500">
-
-Generated with
+Draw the center line of travel to make it obvious how the cutter have moved.
+Stop after 10 bounces.
 
 ```bash
-gridcover -r 4 -w 500 -g 400 -s 0.5 -x 1 -y 1 -v 1 -c 99 -S 99
+gridcover -b 10 -C true -o assets/coverage-b10-Ctrue.png
 ```
+
+<img src="assets/coverage-b10-Ctrue.png" width="300">
+
+
+Stop after travelling 500 units
+
+
+```bash
+gridcover -d 500 -C true -o assets/coverage-d500-Ctrue.png
+```
+<img src="assets/coverage-d500-Ctrue.png" width="300">
+
+
+Stop after 100 units of traveled distance (100m) and enabling random perturbation
+while running between boundary conditions
+
+```bash
+gridcover -d 100 -k true -C true -o assets/coverage-d100-ktrue-Ctrue.png
+```
+
+<img src="assets/coverage-d100-ktrue-Ctrue.png" width="300">
+
+
 
 # Full list of command line options
 
 ```txt
-Usage: gridcover [OPTIONS] [IMAGE-FILE-NAME]
-
 Usage: gridcover [OPTIONS]
 
 Options:
   -o <IMAGE-FILE-NAME>
           Output image file name
+      --args-write-file-name <ARGS-FILE-NAME>
+          Write program arguments file in TOML format
+  -i, --args-read-file-name <ARGS-FILE-NAME>
+          Read program arguments from a TOML file
   -z, --step-size <STEP_SIZE>
           Simulation step size in units if not specified will be calculated from the square size [default: 0]
   -r, --radius <RADIUS>
           Radius of the circle [default: 0.2]
   -l, --blade-len <BLADE_LEN>
           Length of knife blade [default: 0.05]
-  -w, --grid-width <GRID_WIDTH>
-          Grid width in cells [default: 500]
-  -g, --grid-height <GRID_HEIGHT>
-          Grid height in cells [default: 500]
+  -W, --grid-width <GRID_WIDTH>
+          Width in units of the grid [default: 0]
+  -H, --grid-height <GRID_HEIGHT>
+          Height in units of the grid [default: 0]
   -s, --square-size <SQUARE_SIZE>
           Size of each grid square [default: 0]
   -x, --start-x <START_X>
@@ -344,21 +336,21 @@ Options:
   -y, --start-y <START_Y>
           Starting Y coordinate for the circle center [default: 0]
   -v, --velocity <VELOCITY>
-          Movement velocity in units/second [default: 0.5]
+          Movement velocity in units/second [default: 0.3]
       --dir-x <DIR_X>
           Direction X component [default: 0]
       --dir-y <DIR_Y>
           Direction Y component [default: 0]
   -p, --perturb <PERTURB>
           Use perturbation angle for direction changes at bounce [default: true] [possible values: true, false]
-      --perturb-segment <PERTURB_SEGMENT>
+  -k, --perturb-segment <PERTURB_SEGMENT>
           Use perturbation randomly while moving in a straight line [default: false] [possible values: true, false]
       --perturb-segment-percent <PERTURB_SEGMENT_PERCENT>
           Perturb segment percent chance per cell travelled [default: 0.5]
   -b, --stop-bounces <STOP_BOUNCES>
           Maximum number of bounces before ending simulation [default: 0]
   -t, --stop-time <STOP_TIME>
-          Maximum simulated time when to stop [default: 0]
+          Maximum simulated time when to stop in seconds [default: 0]
   -c, --stop-coverage <STOP_COVERAGE>
           Stop when we have reached this coverage percentage This is a soft limit, the simulation will still run until the specified bounces or time is reached if specified [default: 0]
   -m, --stop-simsteps <STOP_SIMSTEPS>
@@ -368,27 +360,29 @@ Options:
       --verbosity <VERBOSITY>
           Verbosity during simulation [default: 0]
   -P, --parallel <PARALLEL>
-          Use parallel processing to speed up simulation [default: true] [possible values: true, false]
+          Use parallel processing to speed up simulation [default: false] [possible values: true, false]
   -S, --random-seed <RANDOM_SEED>
           Random seed for the simulation to be able to reproduce results If not specified, a random seed will be generated [default: 0]
       --image-width-mm <IMAGE_WIDTH_MM>
-          Image output width in mm (50-1000) [default: 200]
+          Image output width in mm (50-2000) [default: 210]
       --image-height-mm <IMAGE_HEIGHT_MM>
-          Image output height in mm (50-1000) [default: 200]
+          Image output height in mm (50-2000) [default: 297]
+  -Z, --paper-size <PAPER-SIZE>
+          Paper size to use for the output image. Options: 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'Letter', 'Legal'. [default: a4] [possible values: a5, a4, a3, a2, a1, a0, letter, legal, tabloid, executive, custom]
   -C, --track-center <TRACK_CENTER>
-          Add option to turn centerpoint tracking on or off [default: true] [possible values: true, false]
+          Add option to turn centerpoint tracking on or off [default: false] [possible values: true, false]
   -R, --show-progress <SHOW_PROGRESS>
           Show progress bar during simulation (default: true) [default: true] [possible values: true, false]
   -T, --cutter-type <CUTTER-TYPE>
           Cutter type to use for the simulation. Options: 'blade', 'circular'. [default: blade] [possible values: blade, circular]
-  -J, --json-output <JSON_OUTPUT>
-          Print results as a json object [default: false] [possible values: true, false]
   -D, --dpi <DPI>
           DPI setting for image output (default: 300) [default: 300]
+  -J, --json-output <JSON_OUTPUT>
+          Print results as a json object [default: false] [possible values: true, false]
   -B, --battery-run-time <BATTERY_RUN_TIME>
           Battery duration in minutes for the cutter [default: 0]
   -A, --battery-charge-time <BATTERY_CHARGE_TIME>
-          Battery charging time in minutes for the cutter when it runs out [default: 0]
+          Battery charging time in minutes for the cutter when it runs out [default: 120]
   -h, --help
           Print help
   -V, --version
