@@ -1,92 +1,17 @@
 use crate::args;
 use chrono::Duration;
-use clap::ValueEnum;
 use colored::Colorize;
 use rand::Rng;
-use thousands::Separable;
 use serde_json::json;
+use thousands::Separable;
 
-const DEFAULT_IMAGE_FILE_NAME: &str = "coverage_grid.png";
-const MIN_RADIUS: f64 = 0.15; // Minimum radius for the circle
+const MIN_RADIUS: f64 = 0.05;
+const MIN_BLADE_LEN: f64 = 0.01;
 
-#[derive(Debug, Clone, Copy)]
-pub struct BoundingBox {
-  pub min_x: f64,
-  pub max_x: f64,
-  pub min_y: f64,
-  pub max_y: f64,
-}
-
-impl BoundingBox {
-    fn new(min_x: f64, max_x: f64, min_y: f64, max_y: f64) -> Self {
-        Self {
-            min_x,
-            max_x,
-            min_y,
-            max_y,
-        }
-    }
-    pub fn init(width: usize, height: usize, radius: f64, square_size: f64) -> Self {
-        let min_x = radius;
-        let max_x = (width as f64) * square_size - radius;
-        let min_y = radius;
-        let max_y = (height as f64) * square_size - radius;
-        Self::new(min_x, max_x, min_y, max_y)
-    }
-    pub fn limit_x(&self, x: f64) -> f64 {
-        x.max(self.min_x).min(self.max_x)
-    }
-    pub fn limit_y(&self, y: f64) -> f64 {
-        y.max(self.min_y).min(self.max_y)
-    }
-}
-
-
-// A struct to track information about cell coverage
-#[derive(Debug, Clone, Copy)]
-pub struct CoverageInfo {
-    pub covered: bool,
-    pub bounce_number: usize, // Which bounce iteration covered this cell
-    pub times_visited: usize, // How many times this cell was covered
-}
-
-impl CoverageInfo {
-    pub fn new() -> Self {
-        Self {
-            covered: false,
-            bounce_number: 0,
-            times_visited: 0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum CutterType {
-    Blade,
-    Circular,
-}
-
-/// Iplement clap::validate::ValueEnum for CutterType
-impl CutterType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            CutterType::Circular => "circular",
-            CutterType::Blade => "blade",
-        }
-    }
-}
-
-impl std::str::FromStr for CutterType {
-    type Err = String;
-    #[allow(dead_code)]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "circular" => Ok(CutterType::Circular),
-            "blade" => Ok(CutterType::Blade),
-            _ => Err(format!("Invalid cutter type: {s}")),
-        }
-    }
-}
+pub mod papersize;
+pub mod boundingbox;
+pub mod coverageinfo;
+pub mod cuttertype;
 
 #[derive(Debug)]
 pub struct SimModel {
@@ -97,8 +22,10 @@ pub struct SimModel {
     pub start_angle_deg: f64,
     pub step_size: f64,
     pub radius: f64,
-    pub grid_width: usize,
-    pub grid_height: usize,
+    pub grid_cells_x: usize,
+    pub grid_cells_y: usize,
+    pub grid_width: f64,  // Width of the grid in pixels
+    pub grid_height: f64, // Height of the grid in pixels
     pub square_size: f64,
     pub velocity: f64,
     pub sim_time_elapsed: f64,
@@ -115,28 +42,30 @@ pub struct SimModel {
     pub stop_simsteps: u64,
     pub stop_distance: f64,
     pub parallel: bool,
-    pub image_width_mm: usize,
-    pub image_height_mm: usize,
-    pub image_file_name: String,
+    pub image_width_mm: u32,
+    pub image_height_mm: u32,
+    pub image_file_name: Option<String>,
     pub verbosity: usize,
     pub track_center: bool,
     pub show_progress: bool,
     pub blade_len: f64,
-    pub cutter_type: CutterType,
+    pub cutter_type: cuttertype::CutterType,
     pub dpi: u32,
     pub perturb_segment: bool,
     pub perturb_segment_percent: f64,
-    pub coverage_grid: Vec<Vec<CoverageInfo>>,
-    pub bb: BoundingBox,
-    pub battery_run_time: f64, // Total time the battery can run in min
-    pub battery_charge_time: f64, // Time it takes to fully charge the battery in min
-    pub battery_charge_count: usize, // How many times the battery was charged
+    pub coverage_grid: Vec<Vec<coverageinfo::CoverageInfo>>,
+    pub bb: boundingbox::BoundingBox,
+    pub battery_run_time: f64,
+    pub battery_charge_time: f64,
+    pub battery_charge_count: usize,
+    pub battery_charge_left: f64, // Percentage of battery charge left
+    pub paper_size: papersize::PaperSize,
 }
 
 // Define a constant for the simulation step size factor
 // This factor determines how many simulation steps are taken per square (cell) size
 // To get a full coverage of squares we should always have a step size that is a fraction of the square size.
-const SIMULATION_STEP_SIZE_FRACTION_OF_SQUARE: f64 = 4.0 / 5.0;
+const SIMULATION_STEP_SIZE_FRACTION_OF_SQUARE: f64 = 3.0 / 5.0;
 const WIDTH_LABEL: usize = 25;
 
 impl SimModel {
@@ -149,8 +78,8 @@ impl SimModel {
         start_angle_deg: f64,
         step_size: f64,
         radius: f64,
-        grid_width: usize,
-        grid_height: usize,
+        grid_width: f64,
+        grid_height: f64,
         square_size: f64,
         velocity: f64,
         stop_coverage: f64,
@@ -159,19 +88,20 @@ impl SimModel {
         stop_simsteps: u64,
         stop_distance: f64,
         parallel: bool,
-        image_width_mm: usize,
-        image_height_mm: usize,
-        image_file_name: String,
+        image_width_mm: u32,
+        image_height_mm: u32,
+        image_file_name: Option<String>,
         verbosity: usize,
         track_center: bool,
         show_progress: bool,
         blade_len: f64,
-        cutter_type: CutterType,
+        cutter_type: cuttertype::CutterType,
         dpi: u32,
         perturb_segment: bool,
         perturb_segment_percent: f64,
         battery_run_time: f64,
         battery_charge_time: f64,
+        paper_size: papersize::PaperSize,
     ) -> Self {
         Self {
             start_x,
@@ -181,6 +111,8 @@ impl SimModel {
             start_angle_deg,
             step_size,
             radius,
+            grid_cells_x: 0,
+            grid_cells_y: 0,
             grid_width,
             grid_height,
             square_size,
@@ -210,11 +142,13 @@ impl SimModel {
             dpi,
             perturb_segment,
             perturb_segment_percent,
-            coverage_grid: vec![vec![CoverageInfo::new(); grid_width]; grid_height],
-            bb: BoundingBox::init(grid_width, grid_height, radius, square_size),
+            coverage_grid: vec![vec![coverageinfo::CoverageInfo::new(); 1]; 1], // Placeholder, will be initialized later when we now how many cells are needed
+            bb: boundingbox::BoundingBox::init(grid_width, grid_height, radius), // TODO: This might not be set at this staeg!
             battery_run_time,
             battery_charge_time,
             battery_charge_count: 0,
+            battery_charge_left: 100.0,
+            paper_size,
         }
     }
 
@@ -239,9 +173,7 @@ impl SimModel {
             args.parallel,
             args.image_width_mm,
             args.image_height_mm,
-            args.image_file_name
-                .clone()
-                .unwrap_or_else(|| DEFAULT_IMAGE_FILE_NAME.to_string()),
+            args.image_file_name.clone(),
             args.verbosity,
             args.track_center,
             args.show_progress,
@@ -252,6 +184,7 @@ impl SimModel {
             args.perturb_segment_percent / 100.0,
             args.battery_run_time,
             args.battery_charge_time,
+            args.paper_size,
         )
     }
 
@@ -260,9 +193,9 @@ impl SimModel {
             "{}",
             "Simulation Parameters:".color(colored::Color::Blue).bold()
         );
-        println!("  {:<WIDTH_LABEL$}: {}", "Radius", self.radius);
+        println!("  {:<WIDTH_LABEL$}: {:.4}", "Radius", self.radius);
         println!(
-            "  {:<WIDTH_LABEL$}: {:.1} units",
+            "  {:<WIDTH_LABEL$}: {:.4} units",
             "Blade Length", self.blade_len
         );
         println!(
@@ -300,19 +233,19 @@ impl SimModel {
             "  {:<WIDTH_LABEL$}: {:.2} degrees",
             "Start Angle", self.start_angle_deg
         );
-        println!("  {:<WIDTH_LABEL$}: {:.2}", "Step Size", self.step_size);
-        println!("  {:<WIDTH_LABEL$}: {:.2}", "Radius", self.radius);
+        println!("  {:<WIDTH_LABEL$}: {:.4}", "Step Size", self.step_size);
+        println!("  {:<WIDTH_LABEL$}: {:.4}", "Radius", self.radius);
         println!(
             "  {:<WIDTH_LABEL$}: {}x{} squares (={}x{} units)",
             "Grid Size",
-            self.grid_width,
-            self.grid_height,
-            self.grid_width as f64 * self.square_size,
-            self.grid_height as f64 * self.square_size
+            self.grid_cells_x,
+            self.grid_cells_y,
+            self.grid_cells_x as f64 * self.square_size,
+            self.grid_cells_y as f64 * self.square_size
         );
         println!("  {:<WIDTH_LABEL$}: {:.4}", "Square Size", self.square_size);
         println!(
-            "  {:<WIDTH_LABEL$}: {:.2} units/s",
+            "  {:<WIDTH_LABEL$}: {:.4} units/s",
             "Velocity", self.velocity
         );
         println!(
@@ -323,11 +256,16 @@ impl SimModel {
         println!(
             "  {:<WIDTH_LABEL$}: {}",
             "Perturb Segment",
-            if self.perturb_segment { "ENABLED" } else { "DISABLED" }
+            if self.perturb_segment {
+                "ENABLED"
+            } else {
+                "DISABLED"
+            }
         );
         println!(
             "  {:<WIDTH_LABEL$}: {:.1}%",
-            "Perturb Segment Percent", self.perturb_segment_percent * 100.0
+            "Perturb Segment Percent",
+            self.perturb_segment_percent * 100.0
         );
         println!(
             "  {:<WIDTH_LABEL$}: {}",
@@ -341,14 +279,11 @@ impl SimModel {
         );
 
         println!(
-            "  {:<WIDTH_LABEL$}: {}",
+            "  {:<WIDTH_LABEL$}: {:?}",
             "Image File Name", self.image_file_name
         );
 
-        println!(
-            "  {:<WIDTH_LABEL$}: {} dpi",
-            "Image DPI", self.dpi
-        );
+        println!("  {:<WIDTH_LABEL$}: {} dpi", "Image DPI", self.dpi);
 
         println!("  {:<WIDTH_LABEL$}: ", "Stop Conditions");
         if self.stop_bounces > 0 {
@@ -398,12 +333,24 @@ impl SimModel {
             "  {:<WIDTH_LABEL$}: {hours}:{minutes:02}:{seconds:02}",
             "Simulated elapsed time"
         );
+
+        let theoretical_minimum_time_seconds = (self.grid_height / self.velocity
+            * (self.grid_width / (self.radius * 2.0)).ceil()
+            * (self.coverage_percent / 100.0))
+            .ceil() as u64;
+        let t_hours = theoretical_minimum_time_seconds / 3600;
+        let t_minutes = (theoretical_minimum_time_seconds % 3600) / 60;
+        let t_seconds = theoretical_minimum_time_seconds % 60;
+        println!(
+            "  {:<WIDTH_LABEL$}: {t_hours}:{t_minutes:02}:{t_seconds:02}",
+            "Theoretical minimum time"
+        );
         println!(
             "  {:<WIDTH_LABEL$}: {:.1}% ({} out of {} cells)",
             "Coverage",
             self.coverage_percent,
             self.coverage_count.separate_with_commas(),
-            (self.grid_width * self.grid_height).separate_with_commas()
+            (self.grid_cells_x * self.grid_cells_y).separate_with_commas()
         );
         println!(
             "  {:<WIDTH_LABEL$}: {:.1} units",
@@ -418,11 +365,15 @@ impl SimModel {
             "Battery Charge Count", self.battery_charge_count
         );
         println!(
-            "  {:<WIDTH_LABEL$}: {} (Step size = {:.2} units, Sim steps/cell = {})",
+            "  {:<WIDTH_LABEL$}: {:.1}%",
+            "Battery Charge Left", self.battery_charge_left
+        );
+        println!(
+            "  {:<WIDTH_LABEL$}: {} (Step size = {:.2} units, Sim steps/cell = {:.2})",
             "Total Simulation Steps",
             self.sim_steps.separate_with_commas(),
             self.step_size,
-            (self.square_size / self.step_size).ceil()
+            self.step_size / self.square_size
         );
     }
 
@@ -432,12 +383,29 @@ impl SimModel {
         let hours = total_seconds / 3600;
         let minutes = (total_seconds % 3600) / 60;
         let seconds = total_seconds % 60;
+
+        let theoretical_minimum_time_seconds = (self.grid_height / self.velocity
+            * (self.grid_width / (self.radius * 2.0)).ceil()
+            * (self.coverage_percent / 100.0))
+            .ceil() as u64;
+        let t_hours = theoretical_minimum_time_seconds / 3600;
+        let t_minutes = (theoretical_minimum_time_seconds % 3600) / 60;
+        let t_seconds = theoretical_minimum_time_seconds % 60;
+
+        // Algorithm efficience defined as percentage in relation to how close we get to
+        // the theoretical minimum time. An efficiency of 100% means we reached the theoretical minimum time.
+        let efficiency = if theoretical_minimum_time_seconds > 0 {
+            (theoretical_minimum_time_seconds as f64 / self.sim_time_elapsed) * 100.0
+        } else {
+            0.0
+        };
+
         let json = json!({
             "Simulation Result": {
                 "Coverage": {
                     "Percent": self.coverage_percent,
                     "Count": self.coverage_count,
-                    "Bounce count": self.bounce_count, 
+                    "Bounce count": self.bounce_count,
                 },
                 "Cutter": {
                     "Type": self.cutter_type.as_str(),
@@ -450,6 +418,7 @@ impl SimModel {
                         "Run time": self.battery_run_time,
                         "Charge time": self.battery_charge_time,
                         "Charge count": self.battery_charge_count,
+                        "Charge left (percent)": self.battery_charge_left,
                     }
                 },
                 "Time": {
@@ -457,9 +426,10 @@ impl SimModel {
                         self.sim_real_time.num_minutes(),
                         self.sim_real_time.num_seconds() % 60),
                     "Simulation": format!("{:02}:{:02}:{:02}",
-                        hours,
-                        minutes,
-                        seconds),
+                        hours, minutes, seconds),
+                    "Min. Time": format!("{:02}:{:02}:{:02}",
+                        t_hours, t_minutes, t_seconds),
+                    "Efficiency": format!("{efficiency:.2}").parse::<f64>().unwrap(),
                 },
                 "Start": {
                     "Position": {
@@ -473,18 +443,31 @@ impl SimModel {
                     "Angle (degrees)": self.start_angle_deg,
                 },
                 "Grid": {
-                    "Cells x": self.grid_width,
-                    "Cells y": self.grid_height,
-                    "Area": self.grid_width * self.grid_height,
+                    "Cells x": self.grid_cells_x,
+                    "Cells y": self.grid_cells_y,
+                    "Area": self.grid_cells_x * self.grid_cells_y,
                     "Cell size": self.square_size,
-                    "Width": self.square_size * self.grid_width as f64,
-                    "Height": self.square_size * self.grid_height as f64,
+                    "Width": self.square_size * self.grid_cells_x as f64,
+                    "Height": self.square_size * self.grid_cells_y as f64,
                 },
                 "Steps": {
                     "Total": self.sim_steps,
                     "Size": self.step_size,
-                    "Per cell": self.square_size / self.step_size,
-                }
+                    "Per cell": self.step_size / self.square_size,
+                },
+                "Output image": {
+                    "Paper size": self.paper_size.get_json(),
+                    "File name": if self.image_file_name.is_none() {
+                        "".to_string()
+                    } else {
+                        self.image_file_name.as_ref().unwrap().clone()
+                    },
+                    "DPI": self.dpi,
+                    "Pixels": {
+                        "width": (self.image_width_mm as f64 * self.dpi as f64 / 25.4).round() as u32,
+                        "height": (self.image_height_mm as f64 * self.dpi as f64 / 25.4).round() as u32,
+                    }
+                },
             }
         });
         println!("{}", serde_json::to_string_pretty(&json).unwrap());
@@ -526,7 +509,7 @@ pub fn init_model(
     rng: &mut impl Rng,
 ) -> Result<SimModel, Box<dyn std::error::Error>> {
     // Initialize simulation configuration
-    let mut sim_model = SimModel::init(args);
+    let mut model = SimModel::init(args);
 
     // Make sure one of the stopping conditions is set
     if args.stop_bounces == 0
@@ -542,77 +525,118 @@ pub fn init_model(
     }
 
     // From the geometry we know the following two condions must hold for the simulation to work:
-    if sim_model.radius <= MIN_RADIUS {
+    if model.radius <= MIN_RADIUS {
         return Err(format!("Radius must be greater than {MIN_RADIUS} units").into());
     }
 
-    if sim_model.square_size <= 0.0 {
-        if sim_model.cutter_type == CutterType::Blade {
-            sim_model.square_size = sim_model.blade_len / 3.0; // Default square size for blade cutter
+    if model.square_size <= 0.0 {
+        if model.cutter_type == cuttertype::CutterType::Blade {
+            if model.blade_len <= MIN_BLADE_LEN || model.blade_len >= model.radius {
+                return Err(
+                    format!("Blade length must be greater than {MIN_BLADE_LEN} units and less than the radius").into(),
+                );
+            }
+            if model.radius <= model.blade_len * 2.0 {
+                return Err(format!(
+                    "Radius must be greater than twice the blade length ({}) units",
+                    model.blade_len * 2.0
+                )
+                .into());
+            }
+            model.square_size = model.blade_len / 2.0; // Default square size for blade cutter
         } else {
-            sim_model.square_size = sim_model.radius / 3.0; // Default square size for circular cutter
+            model.square_size = model.radius / 3.0; // Default square size for circular cutter
         }
     }
 
-    if sim_model.cutter_type == CutterType::Blade
-        && (sim_model.square_size >= sim_model.blade_len / 3.0)
-    {
-        return Err("Square size must be < 1/3 of blade length".into());
+    if model.grid_width == 0.0 && model.grid_height == 0.0 {
+        // Set default grid size based on cutter radious size
+        model.grid_width = model.radius * 50.0;
+        model.grid_height = model.radius * 50.0;
+    } else if model.grid_width == 0.0 {
+        model.grid_width = model.grid_height; // Default grid width
+    } else {
+        model.grid_height = model.grid_width; // Default grid height
     }
 
-    if sim_model.step_size >= sim_model.square_size {
+    if model.grid_width < model.radius * 4.0 || model.grid_height < model.radius * 4.0 {
+        return Err(format!(
+            "Grid size must be at least 4 times the radius (Minimum {}x{} units)",
+            4.0 * model.radius,
+            4.0 * model.radius
+        )
+        .into());
+    }
+
+    // Calculate the number of cells in the grid based on the square size
+    // Round the number of cells to the nearest whole number
+    model.grid_cells_x = (model.grid_width / model.square_size).round() as usize;
+    model.grid_cells_y = (model.grid_height / model.square_size).round() as usize;
+
+    model.coverage_grid = vec![vec![coverageinfo::CoverageInfo::new(); model.grid_cells_y]; model.grid_cells_x];
+
+    // Re-adjust the width/height to make sure it is a whole number of cells
+    model.grid_width = model.grid_cells_x as f64 * model.square_size;
+    model.grid_height = model.grid_cells_y as f64 * model.square_size;
+
+    model.bb = boundingbox::BoundingBox::init(model.grid_width, model.grid_height, model.radius);
+
+    if model.cutter_type == cuttertype::CutterType::Blade && (model.square_size > model.blade_len / 1.5) {
+        return Err("Square size must be < 3/2 of blade length".into());
+    }
+
+    if model.step_size >= model.square_size {
         return Err(format!(
             "Step size {} must be smaller than square size {}",
-            sim_model.step_size, sim_model.square_size
+            model.step_size, model.square_size
         )
         .into());
     }
 
     // The size of the simulated grid must be at leat twice the radius
-    if sim_model.grid_width as f64 * sim_model.square_size <= 2.0 * sim_model.radius
-        || sim_model.grid_height as f64 * sim_model.square_size <= 2.0 * sim_model.radius
+    if model.grid_cells_x as f64 * model.square_size <= 2.0 * model.radius
+        || model.grid_cells_y as f64 * model.square_size <= 2.0 * model.radius
     {
         return Err(format!(
             "Grid size must be at least twice the diameter of the circle (Minimum {}x{} squares)",
-            2 * (sim_model.radius / sim_model.square_size).ceil() as usize,
-            2 * (sim_model.radius / sim_model.square_size).ceil() as usize
+            2 * (model.radius / model.square_size).ceil() as usize,
+            2 * (model.radius / model.square_size).ceil() as usize
         )
         .into());
     }
 
     // If step size is not set then set it to 80% of the square size
-    if sim_model.step_size <= 0.0 {
-        sim_model.step_size = sim_model.square_size * SIMULATION_STEP_SIZE_FRACTION_OF_SQUARE;
+    if model.step_size <= 0.0 {
+        model.step_size = model.square_size * SIMULATION_STEP_SIZE_FRACTION_OF_SQUARE;
     }
 
     // If both startx and start_y are zero, randomize the starting position
     if args.start_x == 0.0 && args.start_y == 0.0 {
-        // Randomize start position within the bounding box
-        // Print range
-        // println!(
-        //     "Randomizing start position within bounding box: ({:.2}, {:.2}) to ({:.2}, {:.2})",
-        //     sim_model.radius,
-        //     sim_model.radius,
-        //     sim_model.grid_width as f64 * sim_model.square_size - sim_model.radius,
-        //     sim_model.grid_height as f64 * sim_model.square_size - sim_model.radius
-        // );
-        sim_model.start_x = rng.random_range(
-            sim_model.radius..(sim_model.grid_width as f64 * sim_model.square_size - sim_model.radius),
+        model.start_x = rng.random_range(
+            model.radius..(model.grid_cells_x as f64 * model.square_size - model.radius),
         );
-        sim_model.start_y = rng.random_range(
-            sim_model.radius..(sim_model.grid_height as f64 * sim_model.square_size - sim_model.radius),
+        model.start_y = rng.random_range(
+            model.radius..(model.grid_cells_y as f64 * model.square_size - model.radius),
         );
     } else {
         // Use the user-defined start position
-        sim_model.start_x = args.start_x;
-        sim_model.start_y = args.start_y;
+        model.start_x = args.start_x;
+        model.start_y = args.start_y;
     }
 
     // Setup the initial direction of movement based on user input or randomize it
     let (current_dir_x, current_dir_y, angle_deg) = set_initial_direction(args, rng);
-    sim_model.start_dir_x = current_dir_x;
-    sim_model.start_dir_y = current_dir_y;
-    sim_model.start_angle_deg = angle_deg;
+    model.start_dir_x = current_dir_x;
+    model.start_dir_y = current_dir_y;
+    model.start_angle_deg = angle_deg;
 
-    Ok(sim_model)
+    // Setup the paper size in mm
+    if let Some((width_mm, height_mm)) = args.paper_size.get_size_mm() {
+        model.image_width_mm = width_mm as u32;
+        model.image_height_mm = height_mm as u32;
+    } else {
+        return Err("Unknown paper size.".to_string().into());
+    }
+
+    Ok(model)
 }
