@@ -260,14 +260,14 @@ MIT License
 
 ## Without center tracking
 
-Using defaults and stop simulation at 50% coverage
+### Using defaults and stop simulation at 50% coverage
 
 ```bash
 gridcover -c 90 -o assets/coverage-c50.png
 ```
 <img src="assets/coverage-c50.png" width="300">
 
-Using defaults and stop simulation at 99% coverage
+### Using defaults and stop simulation at 99% coverage
 
 ```bash
 gridcover -c 99 -o assets/coverage-c99.png
@@ -278,7 +278,8 @@ gridcover -c 99 -o assets/coverage-c99.png
 ## With center point tracking
 
 Draw the center line of travel to make it obvious how the cutter have moved.
-Stop after 10 bounces.
+
+### Stop after 10 bounces
 
 ```bash
 gridcover -b 10 -C true -o assets/coverage-b10-Ctrue.png
@@ -287,7 +288,7 @@ gridcover -b 10 -C true -o assets/coverage-b10-Ctrue.png
 <img src="assets/coverage-b10-Ctrue.png" width="300">
 
 
-Stop after travelling 500 units
+### Stop after travelling 500 units
 
 
 ```bash
@@ -295,6 +296,7 @@ gridcover -d 500 -C true -o assets/coverage-d500-Ctrue.png
 ```
 <img src="assets/coverage-d500-Ctrue.png" width="300">
 
+### Stop after 100 units
 
 Stop after 100 units of traveled distance (100m) and enabling random perturbation
 while running between boundary conditions
