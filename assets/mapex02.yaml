@@ -1,0 +1,17 @@
+# Example map file for GridCover
+name: "My Backyard"
+description: "A backyard with a pond and patio"
+
+grid:
+  width: 7    # Override default grid width if needed
+  height: 7   # Override default grid height if needed
+
+obstacles:
+      
+  # Line obstacles (useful for narrow barriers like fences)
+  - type: line
+    points:
+      - [2, 2]
+      - [4, 5]
+    width: 0.5
+    name: "Fence"

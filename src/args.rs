@@ -47,11 +47,11 @@ pub struct Args {
     pub grid_height: f64,
 
     /// Size of each grid square
-    #[arg(short = 's', long, default_value_t = 0.0)]
+    #[arg(short = 's', long, default_value_t = -1.0)]
     pub square_size: f64,
 
     /// Starting X coordinate for the circle center 
-    #[arg(short = 'x', long, default_value_t = 0.0)]
+    #[arg(short = 'x', long, default_value_t = -1.0)]
     pub start_x: f64,
 
     /// Starting Y coordinate for the circle center 
@@ -174,7 +174,7 @@ pub struct Args {
     pub track_center: bool,
 
     /// Show progress bar during simulation (default: true)
-    #[arg(long, short = 'R', default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, short = 'R', default_value_t = false, action = clap::ArgAction::Set)]
     pub show_progress: bool,
 
     /// Cutter type to use for the simulation (default: "blade")
@@ -228,7 +228,22 @@ pub struct Args {
         })
     )]
     pub battery_charge_time: f64,
-  
+
+    /// Path to map file with obstacles
+    #[arg(short = 'M', long, default_value = None, value_name = "MAP-FILE")]
+    pub map_file_name: Option<String>,
+
+    /// Show or hide gridlines in the output image
+    #[arg(long, short = 'G', default_value_t = false, action = clap::ArgAction::Set)]
+    pub show_gridlines: bool,
+
+    /// Store simulation results and model parameters in SQLite database file
+    #[arg(long, short = 'Q', default_value = None, value_name = "DATABASE-FILE")]
+    pub database_file: Option<String>,
+
+    /// Quiet, no output at all
+    #[arg(long, short = 'q', default_value_t = false, action = clap::ArgAction::Set)]
+    pub quiet: bool,
 }
 
 
@@ -271,6 +286,10 @@ impl Args {
             battery_run_time: if self.battery_run_time > 0.0 { self.battery_run_time } else { other.battery_run_time },
             battery_charge_time: if self.battery_charge_time != 120.0 { self.battery_charge_time } else { other.battery_charge_time },
             paper_size: if self.paper_size != PaperSize::A4 { self.paper_size } else { other.paper_size },
+            map_file_name: self.map_file_name.or(other.map_file_name),
+            show_gridlines: if self.show_gridlines { self.show_gridlines } else { other.show_gridlines },
+            database_file: self.database_file.or(other.database_file),
+            quiet: if self.quiet { self.quiet } else { other.quiet },
         }
     }
 }

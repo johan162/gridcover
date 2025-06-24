@@ -52,7 +52,7 @@ pub fn cutter_strategy(
 
                 // How many sim steps to cover the width/height of the cell/square
                 let sim_steps_per_cell =
-                    (model.square_size / model.step_size).ceil() as u64;
+                    (model.cell_size / model.step_size).ceil() as u64;
 
                 if model.sim_steps % sim_steps_per_cell == 0
                     && rng.random_bool(model.perturb_segment_percent)

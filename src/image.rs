@@ -1,26 +1,15 @@
+use crate::model::grid::Cell;
 use colored::Colorize;
 
 /// Create a PNG image of the coverage grid with colored squares
-///
-/// # Arguments
-///
-/// * `width` - Width of the grid in cells
-/// * `height` - Height of the grid in cells
-/// * `coverage_grid` - The grid containing coverage information
-/// * `image_width_mm` - The desired width of the image in millimeters
-/// * `image_height_mm` - The desired height of the image in millimeters
-/// * `output_path` - Path where to save the PNG image
 pub fn save_grid_image(model: &crate::model::SimModel) -> Result<(), Box<dyn std::error::Error>> {
-    // Convert mm to pixels (300 DPI for quality monitors)
-    // 300 pixels per inch, 25.4 mm per inch is what we get on quality monitors
+    // Convert mm to pixels using DPI (Dots Per Inch)
     let pixels_per_mm = model.dpi as f64 / 25.4;
-    // println!("Pixels per mm: {pixels_per_mm}");
-    // Calculate base dimensions
-    let mut base_img_width = (model.image_width_mm as f64 * pixels_per_mm).round() as u32;
-    let mut base_img_height = (model.image_height_mm as f64 * pixels_per_mm).round() as u32;
-    // println!("Base image size: {base_img_width}x{base_img_height}");
 
-    if base_img_height < model.grid_cells_y as u32 {
+    let mut base_img_width_pixels = (model.image_width_mm as f64 * pixels_per_mm).round() as u32;
+    let mut base_img_height_pixels = (model.image_height_mm as f64 * pixels_per_mm).round() as u32;
+
+    if base_img_height_pixels < model.grid_cells_y as u32 {
         eprintln!(
             "{} {} mm",
             "Warning! Adjusting image height to fit grid height. New height at given DPI:"
@@ -28,10 +17,10 @@ pub fn save_grid_image(model: &crate::model::SimModel) -> Result<(), Box<dyn std
                 .bold(),
             (model.grid_cells_y as u32 + 1) / pixels_per_mm as u32
         );
-        base_img_height = model.grid_cells_y as u32 + 1;
+        base_img_height_pixels = model.grid_cells_y as u32 + 1;
     }
 
-    if base_img_width < model.grid_cells_x as u32 {
+    if base_img_width_pixels < model.grid_cells_x as u32 {
         eprintln!(
             "{} {} mm",
             "Warning! Adjusting image width to fit grid. New width at given DPI:"
@@ -39,27 +28,28 @@ pub fn save_grid_image(model: &crate::model::SimModel) -> Result<(), Box<dyn std
                 .bold(),
             (model.grid_cells_x as u32 + 1) / pixels_per_mm as u32
         );
-        base_img_width = model.grid_cells_x as u32 + 1;
+        base_img_width_pixels = model.grid_cells_x as u32 + 1;
     }
 
     // Calculate cell size to ensure perfect squares
     // Take the smaller dimension to make sure image fits within requested size
     let cell_size = std::cmp::min(
-        base_img_width / model.grid_cells_x as u32,
-        base_img_height / model.grid_cells_y as u32,
+        base_img_width_pixels / model.grid_cells_x as u32,
+        base_img_height_pixels / model.grid_cells_y as u32,
     );
-    // println!("Cell size: {cell_size}");
 
     // Recalculate image dimensions using the uniform cell size
     let img_width = cell_size * model.grid_cells_x as u32;
     let img_height = cell_size * model.grid_cells_y as u32;
-    // println!("Image size: {img_width}x{img_height}");
+
     // Create a new RGB image buffer
     let mut img = image::RgbImage::new(img_width, img_height);
 
-    // Define colors used in grid``
-    const GRID_COLOR: [u8; 3] = [150, 150, 150]; // Dark gray
-    const CENTER_COLOR: [u8; 3] = [255, 255, 255]; // White (for center points)
+    // Define colors used in grid
+    const GRID_BACKGROUND_COLOR: [u8; 3] = [150, 150, 150]; // Dark gray
+    const GRID_LINE_COLOR: [u8; 3] = [0, 0, 0]; // Lighter gray for grid lines
+    const OBSTACLE_COLOR: [u8; 3] = [150, 0, 0]; // Red (for obstacles)
+    const CENTER_COLOR: [u8; 3] = [0, 0, 0]; // Black (for center points)
     const GREEN_SHADES: [[u8; 3]; 21] = [
         [240, 255, 240], // Honeydew (very light green)
         [220, 255, 220],
@@ -86,39 +76,75 @@ pub fn save_grid_image(model: &crate::model::SimModel) -> Result<(), Box<dyn std
 
     // Fill the image with grid color first
     for pixel in img.pixels_mut() {
-        *pixel = image::Rgb(GRID_COLOR);
+        *pixel = image::Rgb(GRID_BACKGROUND_COLOR);
     }
 
     // Draw colored cells for covered areas
-    for (y, row) in model.coverage_grid.iter().enumerate() {
+    for y in 0..model.grid_cells_y {
         // Convert grid y to image y (invert y axis to match terminal output)
         let img_y = model.grid_cells_y - 1 - y;
 
-        for (x, info) in row.iter().enumerate() {
-            if info.covered {
-                let color = if model.track_center
-                    && info.times_visited == crate::cells::CENTERPOINT_MAGIC_CONSTANT
-                {
-                    CENTER_COLOR
-                } else {
-                    //let color_idx = info.bounce_number.min(colors.len() - 1);
-                    let color_idx = info.times_visited.min(GREEN_SHADES.len() - 1);
-                    GREEN_SHADES[color_idx]
-                };
+        for x in 0..model.grid_cells_x {
+            // Fill the cell with color (using the uniform cell size)
+            let start_x = x as u32 * cell_size;
+            let start_y = img_y as u32 * cell_size;
+            let cell = &model.grid.as_ref().unwrap().cells[x][y];
 
-                // Fill the cell with color (using the uniform cell size)
-                let start_x = x as u32 * cell_size;
-                let start_y = img_y as u32 * cell_size;
-
-                // Draw the filled cell with a small border
-                let border = 0; // 1 pixel border
-                for cy in start_y + border..start_y + cell_size - border {
-                    for cx in start_x + border..start_x + cell_size - border {
-                        if cx < img_width && cy < img_height {
-                            img.put_pixel(cx, cy, image::Rgb(color));
+            match cell {
+                Cell::Obstacle => {
+                    let color = OBSTACLE_COLOR;
+                    for cy in start_y..start_y + cell_size {
+                        for cx in start_x..start_x + cell_size {
+                            if cx < img_width && cy < img_height {
+                                img.put_pixel(cx, cy, image::Rgb(color));
+                            }
                         }
                     }
                 }
+                Cell::Empty => {
+                    // Skip empty cells, they are not drawn, we leave the background color
+                }
+                Cell::Covered(info) => {
+                    let color_idx = info.times_visited.min(GREEN_SHADES.len() - 1);
+                    let color = GREEN_SHADES[color_idx];
+                    for cy in start_y..start_y + cell_size {
+                        for cx in start_x..start_x + cell_size {
+                            if cx < img_width && cy < img_height {
+                                img.put_pixel(cx, cy, image::Rgb(color));
+                            }
+                        }
+                    }
+                }
+                Cell::CenterPoint(_) => {
+                    if model.track_center {
+                        let color = CENTER_COLOR;
+                        for cy in start_y..start_y + cell_size {
+                            for cx in start_x..start_x + cell_size {
+                                if cx < img_width && cy < img_height {
+                                    img.put_pixel(cx, cy, image::Rgb(color));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if model.show_gridlines {
+        // Draw vertical grid lines for each work coordinates
+        for x in 0..model.grid_width.round() as u32 {
+            let x_pos = model.grid.as_ref().unwrap().coordinate_to_grid_x(x as f64);
+            for y in 0..img_height {
+                img.put_pixel(x_pos as u32 * cell_size, y, image::Rgb(GRID_LINE_COLOR));
+            }
+        }
+
+        // Draw horizontal grid lines for each work coordinates
+        for y in 0..model.grid_height.round() as u32 {
+            let y_pos = model.grid.as_ref().unwrap().coordinate_to_grid_y(y as f64);
+            for x in 0..img_width {
+                img.put_pixel(x, y_pos as u32 * cell_size, image::Rgb(GRID_LINE_COLOR));
             }
         }
     }

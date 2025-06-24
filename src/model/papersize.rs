@@ -36,7 +36,7 @@ impl PaperSize {
 
     pub fn get_json(&self) -> serde_json::Value {
         json!({
-            "paper_size": self.as_str(),
+            "format": self.as_str(),
             "width_mm": paper_size_to_mm(self.as_str()).map_or(0.0, |(w, _)| w),
             "height_mm": paper_size_to_mm(self.as_str()).map_or(0.0, |(_, h)| h),
         })
