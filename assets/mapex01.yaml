@@ -3,8 +3,8 @@ name: "My Backyard"
 description: "A backyard with a pond and patio"
 
 grid:
-  width: 20    # Override default grid width if needed
-  height: 20   # Override default grid height if needed
+  width: 10    # Override default grid width if needed
+  height: 10   # Override default grid height if needed
 
 obstacles:
   # Rectangle obstacles (x, y are bottom-left coordinates)

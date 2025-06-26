@@ -444,10 +444,7 @@ impl SimModel {
                     "Blade Length": self.blade_len,
                     "Radius": self.radius,
                     "Velocity": self.velocity,
-                    "Cells under": (2.0*self.radius/self.cell_size).floor() * (2.0*self.radius/self.cell_size).floor(),
                     "Battery": {
-                        "Run time": self.battery_run_time,
-                        "Charge time": self.battery_charge_time,
                         "Charge count": self.battery_charge_count,
                         "Charge left (%)": self.battery_charge_left,
                     }
