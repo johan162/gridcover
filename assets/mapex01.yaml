@@ -9,8 +9,8 @@ grid:
 obstacles:
   # Rectangle obstacles (x, y are bottom-left coordinates)
   - type: rectangle
-    x: 3
-    y: 2
+    x: 8
+    y: 5
     width: 1
     height: 1
     name: "Garden Shed"
