@@ -6,11 +6,11 @@ use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use std::fs;
 use std::process::Command;
-// use shell_words;
 
-// Example:
-// grunner -o "/tmp/grunner" -v --delete-frames -a "\-S 456 \-W 5 \-H 5 \-s 0.01" -m 10000 -s 5
-// ./target/debug/grunner -o "/tmp/grunner" -v -a "\-M assets/mapex01.yaml \-S 4786 \-W 5 \-H 5 \-s 0.01" -m 100000  -s 6 --delete-output-dir
+// Examples:
+// ./target/release/grunner -o "/tmp/grunner" --delete-frames -v -a "\-S 456 \-W 5 \-H 5 \-s 0.01" -m 10000 -s 5
+// ./target/release/grunner -o "/tmp/grunner" --delete-output-dir -v -a "\-M assets/mapex01.yaml \-S 4786 \-W 5 \-H 5 \-s 0.01" -m 100000  -s 6
+// ./target/release/grunner -o "/tmp/grunner" --delete-output-dir --delete-frames -v -a "\-M assets/mapex01.yaml \-S 4786 \-W 5 \-H 5 \-s 0.01" -m 200000  -s 7
 
 /// Runner for gridcover over a range of coverage values
 #[derive(Parser, Debug)]
@@ -74,31 +74,35 @@ fn main() {
     let args = Args::parse();
 
     // Delete output directory if it exists
-    if args.delete_output_dir {
-        if let Ok(dir) = fs::metadata(&args.output_dir) {
-            if dir.is_file() {
-                eprintln!(
-                    "{}",
-                    "Output directory name exists as a file, please choose a different name."
-                        .color(colored::Color::Red)
-                        .bold()
-                );
-                return;
-            }
-            if !args.quiet {
-                println!(
-                    "{}",
-                    "Output directory exists, deleting it..."
-                        .color(colored::Color::Yellow)
-                        .bold()
-                );
-            }
-            fs::remove_dir_all(&args.output_dir).expect(
-                &"Failed to delete existing output directory"
+    if args.delete_output_dir
+        && let Ok(dir) = fs::metadata(&args.output_dir)
+    {
+        if dir.is_file() {
+            eprintln!(
+                "{}",
+                "Output directory name exists as a file, please choose a different name."
                     .color(colored::Color::Red)
-                    .bold(),
+                    .bold()
+            );
+            return;
+        }
+        if !args.quiet {
+            println!(
+                "{}",
+                "Output directory exists, deleting it..."
+                    .color(colored::Color::Yellow)
+                    .bold()
             );
         }
+        fs::remove_dir_all(&args.output_dir).unwrap_or_else(|_| {
+            panic!(
+                "{}",
+                "Failed to delete existing output directory"
+                    .color(colored::Color::Red)
+                    .bold()
+                    .to_string()
+            )
+        });
     }
 
     // Number of logical CPU cores
@@ -114,19 +118,27 @@ fn main() {
     rayon::ThreadPoolBuilder::new()
         .num_threads(args.cores)
         .build_global()
-        .expect(
-            &"Failed to set Rayon thread pool size"
-                .color(colored::Color::Red)
-                .bold(),
-        );
+        .unwrap_or_else(|_| {
+            panic!(
+                "{}",
+                "Failed to set Rayon thread pool size"
+                    .color(colored::Color::Red)
+                    .bold()
+                    .to_string()
+            )
+        });
 
     // Directory to store images/results
     let output_dir = &args.output_dir;
-    fs::create_dir_all(output_dir).expect(
-        &"Failed to create output directory '{output_dir}'"
-            .color(colored::Color::Red)
-            .bold(),
-    );
+    fs::create_dir_all(output_dir).unwrap_or_else(|_| {
+        panic!(
+            "{}",
+            "Failed to create output directory '{output_dir}'"
+                .color(colored::Color::Red)
+                .bold()
+                .to_string()
+        )
+    });
 
     // Range of coverage values (1 to 99)
     let coverage_values: Vec<u32> = (1..=990).collect();
@@ -147,15 +159,13 @@ fn main() {
                     .bold()
             );
         }
-    } else {
-        if !args.quiet {
-            println!(
-                "{}",
-                "Running simulations for coverage values ..."
-                    .color(colored::Color::Green)
-                    .bold()
-            );
-        }
+    } else if !args.quiet {
+        println!(
+            "{}",
+            "Running simulations for coverage values ..."
+                .color(colored::Color::Green)
+                .bold()
+        );
     }
 
     let speedup = 2u32.pow(args.speedup as u32) as usize;
@@ -213,11 +223,18 @@ fn main() {
                     sim_args.push("-m".to_string());
                     sim_args.push(step.to_string());
 
-                    let status = Command::new("gridcover").args(&sim_args).status().expect(
-                        &"Failed to start gridcover process"
-                            .color(colored::Color::Red)
-                            .bold(),
-                    );
+                    let status = Command::new("gridcover")
+                        .args(&sim_args)
+                        .status()
+                        .unwrap_or_else(|_| {
+                            panic!(
+                                "{}",
+                                "Failed to start gridcover process"
+                                    .color(colored::Color::Red)
+                                    .bold()
+                                    .to_string()
+                            )
+                        });
 
                     if !status.success() {
                         eprintln!(
@@ -250,11 +267,18 @@ fn main() {
                     insert_decimal(&coverage.to_string()).unwrap_or_else(|| coverage.to_string()),
                 );
 
-                let status = Command::new("gridcover").args(&sim_args).status().expect(
-                    &"Failed to start gridcover process"
-                        .color(colored::Color::Red)
-                        .bold(),
-                );
+                let status = Command::new("gridcover")
+                    .args(&sim_args)
+                    .status()
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "{}",
+                            "Failed to start gridcover process"
+                                .color(colored::Color::Red)
+                                .bold()
+                                .to_string()
+                        )
+                    });
 
                 if !status.success() {
                     eprintln!(
@@ -366,15 +390,13 @@ fn main() {
                             .bold()
                     );
                 }
-            } else {
-                if !args.quiet {
-                    println!(
-                        "{}",
-                        "Frames are kept in the output directory."
-                            .color(colored::Color::Yellow)
-                            .bold()
-                    );
-                }
+            } else if !args.quiet {
+                println!(
+                    "{}",
+                    "Frames are kept in the output directory."
+                        .color(colored::Color::Yellow)
+                        .bold()
+                );
             }
         }
     }
