@@ -7,80 +7,18 @@ mod model;
 mod sim;
 mod strategy;
 mod vector;
+mod video;
 
+use args::{read_args_from_file, write_args_to_file};
 use clap::Parser;
 use colored::Colorize;
+use db::try_store_result_to_db;
 use image::try_save_image;
 use mapfile::{load_optional_mapfile, try_apply_mapfile_to_model};
 use model::{SimModel, init_model};
 use rand::Rng;
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
-
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::Path;
-use std::process::Command;
-use toml::{self};
-
-/// Writes the program arguments to a TOML formatted file
-///
-/// # Arguments
-///
-/// * `args` - The program arguments structure
-/// * `file_path` - Path where the TOML file should be saved
-///
-/// # Returns
-///
-/// * `Ok(())` if the file was successfully written
-/// * `Err(e)` if there was an error during serialization or file writing
-pub fn write_args_to_file<T: Serialize>(
-    args: &T,
-    file_path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Convert the args struct to a TOML string
-    let toml_string = toml::to_string_pretty(&args)?;
-
-    // Create the file and write the TOML string to it
-    let path = Path::new(file_path);
-    let mut file = File::create(path)?;
-    file.write_all(toml_string.as_bytes())?;
-
-    Ok(())
-}
-
-/// Reads program arguments from a TOML formatted file
-///
-/// # Arguments
-///
-/// * `file_path` - Path of the TOML file to read
-///
-/// # Returns
-///
-/// * `Ok(T)` containing the parsed arguments structure if successful
-/// * `Err(e)` if there was an error during file reading or deserialization
-pub fn read_args_from_file<T>(file_path: &str) -> Result<T, Box<dyn std::error::Error>>
-where
-    T: for<'de> Deserialize<'de> + Default,
-{
-    // Open the file
-    let path = Path::new(file_path);
-    if !path.exists() {
-        // Return default if file doesn't exist
-        return Ok(T::default());
-    }
-
-    let mut file = File::open(path)?;
-    let mut toml_string = String::new();
-    file.read_to_string(&mut toml_string)?;
-
-    // Parse the TOML string to the args structure
-    let args: T = toml::from_str(&toml_string)?;
-
-    Ok(args)
-}
 
 fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &mut SimModel) {
     // Check if we should randomize the start position
@@ -128,6 +66,7 @@ fn main() {
                         .bold(),
                     err
                 );
+                std::process::exit(1);
             }
         }
     }
@@ -141,6 +80,7 @@ fn main() {
                     .bold(),
                 err
             );
+            std::process::exit(1);
         })
     }
 
@@ -176,6 +116,9 @@ fn main() {
     ));
 
     try_apply_mapfile_to_model(&mut model);
+
+    // We cannot set a random start position until the map has been loaded
+    // as we need a start position that is not in an obstacle
     set_optional_random_start_position(&mut rng, &mut model);
 
     // Start the simulation loop
@@ -199,11 +142,13 @@ fn main() {
     model.max_visited_number = model.grid.as_ref().unwrap().get_max_visited_number();
     model.min_visited_number = model.grid.as_ref().unwrap().get_min_visited_number();
 
-    println!();
+    if args.show_progress {
+        println!();
+    }
 
     try_store_result_to_db(&args, &model);
     try_save_image(&model, None);
-    try_video_encoding(&model).unwrap_or_else(|err| {
+    video::try_video_encoding(&model).unwrap_or_else(|err| {
         eprintln!(
             "{} {}",
             "Error creating video from simulation frames:"
@@ -235,149 +180,4 @@ fn main() {
             model.print_simulation_results_short_txt();
         }
     }
-}
-
-fn try_store_result_to_db(args: &args::Args, model: &SimModel) {
-    // Store simulation data in database if requested
-    if let Some(ref db_path) = args.database_file {
-        match db::store_simulation_to_database(model, db_path) {
-            Ok((model_id, result_id)) => {
-                if !args.quiet {
-                    let header = "Simulation data stored in database:";
-                    println!(
-                        "{}\n{}\n  Model ID: {}, Result ID: {} in '{}'",
-                        header.color(colored::Color::Green).bold(),
-                        "=".repeat(header.len()).color(colored::Color::Green).bold(),
-                        model_id,
-                        result_id,
-                        db_path
-                    );
-                }
-            }
-            Err(err) => {
-                eprintln!(
-                    "{} {}",
-                    "Error storing simulation data in database:"
-                        .color(colored::Color::Red)
-                        .bold(),
-                    err
-                );
-            }
-        }
-    }
-}
-
-pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Error>> {
-    if model.create_animation {
-        let encoder = if model.hw_encoding {
-            "hevc_videotoolbox"
-        } else {
-            "libx265"
-        };
-
-        // Check if ffmpeg is installed
-        if Command::new("ffmpeg").arg("-version").output().is_err() {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "{}",
-                    "Program 'ffmpeg' must be installed. For Mac OSX use 'brew install ffmpeg'"
-                        .color(colored::Color::Red)
-                        .bold()
-                ),
-            )))?;
-        }
-
-        // Check that the video output file doesn't already exist
-        if Path::new(&model.animation_file_name).exists() {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::AlreadyExists,
-                format!(
-                    "{}",
-                    format!(
-                        "{}: '{}'",
-                        "Video output file already exists", model.animation_file_name
-                    )
-                    .color(colored::Color::Red)
-                    .bold()
-                ),
-            )))?;
-        }
-
-        if !model.quiet {
-            println!(
-                "{}",
-                "Creating video using H.265 encoding from simulation frames ..."
-                    .color(colored::Color::Green)
-                    .bold()
-            );
-        }
-
-        let video_cmd_output = Command::new("ffmpeg")
-            .args([
-                "-framerate",
-                model.frame_rate.to_string().as_str(),
-                "-pattern_type",
-                "glob",
-                "-i",
-                &format!("{}/frame_*.png", model.frames_dir),
-                "-c:v",
-                encoder,
-                "-pix_fmt",
-                "yuv420p",
-                &model.animation_file_name,
-            ])
-            .output();
-
-        if video_cmd_output.is_err() || !video_cmd_output.as_ref().unwrap().status.success() {
-            Err(Box::new(
-                    std::io::Error::other(
-                        format!("{}","Failed to create video from results. 'ffmpeg' exists, but the correct ffmpeg H.265/HEVC encoder is perhaps not installed?"
-                            .color(colored::Color::Red)
-                            .bold()),
-                    )
-                ))?;
-        } else {
-            if !model.quiet {
-                println!(
-                    "{} {}",
-                    "Video created successfully:"
-                        .color(colored::Color::Green)
-                        .bold(),
-                    model
-                        .animation_file_name
-                        .color(colored::Color::Green)
-                        .bold()
-                );
-            }
-            if model.delete_frames {
-                // Delete te entire output directory
-                if let Err(e) = fs::remove_dir_all(&model.frames_dir) {
-                    Err(Box::new(std::io::Error::other(format!(
-                        "{} '{}' : {}",
-                        "Failed to delete frames directory"
-                            .color(colored::Color::Red)
-                            .bold(),
-                        model.frames_dir.as_str(),
-                        e
-                    ))))?;
-                } else if !model.quiet {
-                    println!(
-                        "{}",
-                        "Frames directory deleted successfully."
-                            .color(colored::Color::Green)
-                            .bold()
-                    );
-                }
-            } else if !model.quiet {
-                println!(
-                    "{}",
-                    "Frames are kept in the output directory."
-                        .color(colored::Color::Yellow)
-                        .bold()
-                );
-            }
-        }
-    }
-    Ok(())
 }

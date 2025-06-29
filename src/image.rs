@@ -1,21 +1,24 @@
+use crate::model::SimModel;
 use crate::model::grid::Cell;
 use colored::Colorize;
-use crate::model::SimModel;
 
 pub fn try_save_image(model: &SimModel, override_filename: Option<String>) {
-    if model.image_file_name.is_some() || override_filename.is_some() {
-        if let Err(err) = save_grid_image(&model, override_filename) {
-            eprintln!(
-                "{} {}",
-                "Error saving image:".color(colored::Color::Red).bold(),
-                err
-            );
-        }
+    if (model.image_file_name.is_some() || override_filename.is_some())
+        && let Err(err) = save_grid_image(model, override_filename)
+    {
+        eprintln!(
+            "{} {}",
+            "Error saving image:".color(colored::Color::Red).bold(),
+            err
+        );
     }
 }
 
 /// Create a PNG image of the coverage grid with colored squares
-fn save_grid_image(model: &crate::model::SimModel, override_filename: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+fn save_grid_image(
+    model: &crate::model::SimModel,
+    override_filename: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Convert mm to pixels using DPI (Dots Per Inch)
     let pixels_per_mm = model.dpi as f64 / 25.4;
 
@@ -103,40 +106,22 @@ fn save_grid_image(model: &crate::model::SimModel, override_filename: Option<Str
             let start_y = img_y as u32 * cell_size;
             let cell = &model.grid.as_ref().unwrap().cells[x][y];
 
-            match cell {
-                Cell::Obstacle => {
-                    let color = OBSTACLE_COLOR;
-                    for cy in start_y..start_y + cell_size {
-                        for cx in start_x..start_x + cell_size {
-                            if cx < img_width && cy < img_height {
-                                img.put_pixel(cx, cy, image::Rgb(color));
-                            }
-                        }
-                    }
-                }
-                Cell::Empty => {
-                    // Skip empty cells, they are not drawn, we leave the background color
-                }
+            let color = match cell {
+                Cell::Obstacle => Some(OBSTACLE_COLOR),
+                Cell::Empty => None,
                 Cell::Covered(info) => {
                     let color_idx = info.times_visited.min(GREEN_SHADES.len() - 1);
-                    let color = GREEN_SHADES[color_idx];
-                    for cy in start_y..start_y + cell_size {
-                        for cx in start_x..start_x + cell_size {
-                            if cx < img_width && cy < img_height {
-                                img.put_pixel(cx, cy, image::Rgb(color));
-                            }
-                        }
-                    }
+                    Some(GREEN_SHADES[color_idx])
                 }
-                Cell::CenterPoint(_) => {
-                    if model.track_center {
-                        let color = CENTER_COLOR;
-                        for cy in start_y..start_y + cell_size {
-                            for cx in start_x..start_x + cell_size {
-                                if cx < img_width && cy < img_height {
-                                    img.put_pixel(cx, cy, image::Rgb(color));
-                                }
-                            }
+                Cell::CenterPoint(_) if model.track_center => Some(CENTER_COLOR),
+                _ => None,
+            };
+
+            if let Some(color) = color {
+                for cy in start_y..start_y + cell_size {
+                    for cx in start_x..start_x + cell_size {
+                        if cx < img_width && cy < img_height {
+                            img.put_pixel(cx, cy, image::Rgb(color));
                         }
                     }
                 }

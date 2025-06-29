@@ -54,7 +54,6 @@ impl Grid {
             cells_y: grid_cells_y,
             covered_cells: 0,
             cells_obstacles_count: 0,
-        
         }
     }
 
@@ -76,8 +75,9 @@ impl Grid {
     }
 
     // Count the number of cells with an obstacle
-    pub fn update_obstacle_count(&mut self)  {
-       self.cells_obstacles_count = self.cells
+    pub fn update_obstacle_count(&mut self) {
+        self.cells_obstacles_count = self
+            .cells
             .iter()
             .flat_map(|row| row.iter())
             .filter(|cell| cell.is_obstacle())
@@ -169,10 +169,10 @@ impl Grid {
                 if grid_cell_x < 0 || grid_cell_y < 0 {
                     continue;
                 }
-                if let Some(cell) = self.get_cell(grid_cell_x as usize, grid_cell_y as usize) {
-                    if cell.is_obstacle() {
-                        return true;
-                    }
+                if let Some(cell) = self.get_cell(grid_cell_x as usize, grid_cell_y as usize)
+                    && cell.is_obstacle()
+                {
+                    return true;
                 }
             }
         }
@@ -203,7 +203,9 @@ impl Grid {
         if self.cells_x == 0 || self.cells_y == 0 {
             return 0.0;
         }
-        (self.covered_cells as f64 / (self.cells_x * self.cells_y - self.cells_obstacles_count) as f64) * 100.0
+        (self.covered_cells as f64
+            / (self.cells_x * self.cells_y - self.cells_obstacles_count) as f64)
+            * 100.0
     }
 
     pub fn get_coverage(&self) -> (usize, f64) {
@@ -287,35 +289,33 @@ impl Grid {
                     grid_cell_x as usize,
                     grid_cell_y as usize,
                     cutter_type,
-                ) {
-                    if let Some(cell) =
-                        self.get_cell_mut(grid_cell_x as usize, grid_cell_y as usize)
-                    {
-                        match cell {
-                            Cell::Empty => {
-                                cell.set_as_covered(segment_number);
-                                self.covered_cells += 1;
+                ) && let Some(cell) =
+                    self.get_cell_mut(grid_cell_x as usize, grid_cell_y as usize)
+                {
+                    match cell {
+                        Cell::Empty => {
+                            cell.set_as_covered(segment_number);
+                            self.covered_cells += 1;
+                        }
+                        Cell::Covered(existing_coverage) => {
+                            if segment_number != existing_coverage.segment_number {
+                                existing_coverage.times_visited += 1;
+                                existing_coverage.segment_number = segment_number;
                             }
-                            Cell::Covered(existing_coverage) => {
-                                if segment_number != existing_coverage.segment_number {
-                                    existing_coverage.times_visited += 1;
-                                    existing_coverage.segment_number = segment_number;
-                                }
+                        }
+                        Cell::CenterPoint(existing_coverage) => {
+                            if segment_number != existing_coverage.segment_number {
+                                existing_coverage.times_visited += 1;
+                                existing_coverage.segment_number = segment_number;
                             }
-                            Cell::CenterPoint(existing_coverage) => {
-                                if segment_number != existing_coverage.segment_number {
-                                    existing_coverage.times_visited += 1;
-                                    existing_coverage.segment_number = segment_number;
-                                }
-                            }
-                            Cell::Obstacle => {
-                                eprint!(
-                                    "Attempted to cover a cell marked as an obstacle at ({grid_cell_x}, {grid_cell_y}), ({:.1}, {:.1})",
-                                    grid_cell_x as f64 * self.cell_size,
-                                    grid_cell_y as f64 * self.cell_size
-                                );
-                                panic!("Attempted to cover a cell marked as an obstacle");
-                            }
+                        }
+                        Cell::Obstacle => {
+                            eprint!(
+                                "Attempted to cover a cell marked as an obstacle at ({grid_cell_x}, {grid_cell_y}), ({:.1}, {:.1})",
+                                grid_cell_x as f64 * self.cell_size,
+                                grid_cell_y as f64 * self.cell_size
+                            );
+                            panic!("Attempted to cover a cell marked as an obstacle");
                         }
                     }
                 }
@@ -323,36 +323,29 @@ impl Grid {
         }
 
         // Handle the center point separately
-        if track_center {
-            if let Some(cell) = self.get_cell_mut(grid_center_x as usize, grid_center_y as usize) {
-                match cell {
-                    Cell::Empty => {
-                        *cell = Cell::CenterPoint(CoverageInfo::new(segment_number, 1));
+        if track_center
+            && let Some(cell) = self.get_cell_mut(grid_center_x as usize, grid_center_y as usize)
+        {
+            match cell {
+                Cell::Empty => {
+                    *cell = Cell::CenterPoint(CoverageInfo::new(segment_number, 1));
+                }
+                Cell::Covered(existing_coverage) => {
+                    *cell = Cell::CenterPoint(CoverageInfo::new(
+                        existing_coverage.segment_number,
+                        existing_coverage.times_visited,
+                    ));
+                }
+                Cell::CenterPoint(existing_coverage) => {
+                    if segment_number != existing_coverage.segment_number {
+                        existing_coverage.times_visited += 1;
+                        existing_coverage.segment_number = segment_number;
                     }
-                    Cell::Covered(existing_coverage) => {
-                        *cell = Cell::CenterPoint(CoverageInfo::new(
-                            existing_coverage.segment_number,
-                            existing_coverage.times_visited,
-                        ));
-                    }
-                    Cell::CenterPoint(existing_coverage) => {
-                        if segment_number != existing_coverage.segment_number {
-                            existing_coverage.times_visited += 1;
-                            existing_coverage.segment_number = segment_number;
-                        }
-                    }
-                    Cell::Obstacle => {
-                        panic!("Attempted to mark center point in a cell marked as an obstacle");
-                    }
+                }
+                Cell::Obstacle => {
+                    panic!("Attempted to mark center point in a cell marked as an obstacle");
                 }
             }
         }
     }
-
-    // pub fn mark_obstacle(&mut self, x: f64, y: f64) {
-    //     let (grid_x, grid_y) = self.coordinate_to_grid(x, y);
-    //     if let Some(cell) = self.get_cell_mut(grid_x, grid_y) {
-    //         *cell = Cell::Obstacle;
-    //     }
-    // }
 }

@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
-use serde_json::json;
 use clap::ValueEnum;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
 pub enum PaperSize {
@@ -84,7 +84,7 @@ pub fn paper_size_to_mm(paper_size: &str) -> Option<(f64, f64)> {
         "legal" => Some((215.9, 355.6)),     // 8.5 x 14 inches
         "tabloid" => Some((279.4, 431.8)),   // 11 x 17 inches
         "executive" => Some((191.0, 254.0)), // 7.25 x 10.
-        "custom" => Some((0.0, 0.0)), // Custom size, will be set later
+        "custom" => Some((0.0, 0.0)),        // Custom size, will be set later
         _ => None,
     }
 }

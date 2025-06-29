@@ -2,12 +2,76 @@ use clap::Parser;
 use crate::model::{cuttertype::CutterType, papersize::PaperSize};
 use serde::{Serialize, Deserialize};
 
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::Path;
+
+
 impl Default for Args {
     fn default() -> Self {
         // This will use clap's default values
         Args::parse_from(std::iter::empty::<&str>())
     }
 }
+
+
+/// Writes the program arguments to a TOML formatted file
+///
+/// # Arguments
+///
+/// * `args` - The program arguments structure
+/// * `file_path` - Path where the TOML file should be saved
+///
+/// # Returns
+///
+/// * `Ok(())` if the file was successfully written
+/// * `Err(e)` if there was an error during serialization or file writing
+pub fn write_args_to_file<T: Serialize>(
+    args: &T,
+    file_path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Convert the args struct to a TOML string
+    let toml_string = toml::to_string_pretty(&args)?;
+
+    // Create the file and write the TOML string to it
+    let path = Path::new(file_path);
+    let mut file = File::create(path)?;
+    file.write_all(toml_string.as_bytes())?;
+
+    Ok(())
+}
+
+/// Reads program arguments from a TOML formatted file
+///
+/// # Arguments
+///
+/// * `file_path` - Path of the TOML file to read
+///
+/// # Returns
+///
+/// * `Ok(T)` containing the parsed arguments structure if successful
+/// * `Err(e)` if there was an error during file reading or deserialization
+pub fn read_args_from_file<T>(file_path: &str) -> Result<T, Box<dyn std::error::Error>>
+where
+    T: for<'de> Deserialize<'de> + Default,
+{
+    // Open the file
+    let path = Path::new(file_path);
+    if !path.exists() {
+        // Return default if file doesn't exist
+        return Ok(T::default());
+    }
+
+    let mut file = File::open(path)?;
+    let mut toml_string = String::new();
+    file.read_to_string(&mut toml_string)?;
+
+    // Parse the TOML string to the args structure
+    let args: T = toml::from_str(&toml_string)?;
+
+    Ok(args)
+}
+
 
 #[derive(Parser, Debug, Serialize, Deserialize)]
 #[command(author, version, about = "Grid coverage simulation")]
@@ -125,7 +189,7 @@ pub struct Args {
     #[arg(long, default_value_t = 0)]
     pub verbosity: usize,
 
-     /// Use parallel processing to speed up simulation 
+    /// Use parallel processing to speed up simulation 
     #[arg(long, short='P', default_value_t = false, action = clap::ArgAction::Set)]
     pub parallel: bool,
 

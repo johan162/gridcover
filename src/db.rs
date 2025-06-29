@@ -1,10 +1,44 @@
 use crate::model::SimModel;
 use rusqlite::{Connection, params};
 use serde_json::Value as JsonValue;
+use crate::args;
+use crate::db;
+use colored::Colorize;
 
 pub struct Database {
     conn: Connection,
 }
+
+pub fn try_store_result_to_db(args: &args::Args, model: &SimModel) {
+    // Store simulation data in database if requested
+    if let Some(ref db_path) = args.database_file {
+        match db::store_simulation_to_database(model, db_path) {
+            Ok((model_id, result_id)) => {
+                if !args.quiet {
+                    let header = "Simulation data stored in database:";
+                    println!(
+                        "{}\n{}\n  Model ID: {}, Result ID: {} in '{}'",
+                        header.color(colored::Color::Green).bold(),
+                        "=".repeat(header.len()).color(colored::Color::Green).bold(),
+                        model_id,
+                        result_id,
+                        db_path
+                    );
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "{} {}",
+                    "Error storing simulation data in database:"
+                        .color(colored::Color::Red)
+                        .bold(),
+                    err
+                );
+            }
+        }
+    }
+}
+
 
 impl Database {
     /// Create a new database connection or open existing database
