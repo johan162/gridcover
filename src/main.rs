@@ -10,7 +10,7 @@ mod vector;
 
 use clap::Parser;
 use colored::Colorize;
-use image::save_grid_image;
+use image::try_save_image;
 use mapfile::{load_optional_mapfile, try_apply_mapfile_to_model};
 use model::{SimModel, init_model};
 use rand::Rng;
@@ -18,9 +18,11 @@ use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
 
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::process::Command;
 use toml::{self};
 
 /// Writes the program arguments to a TOML formatted file
@@ -197,49 +199,40 @@ fn main() {
     model.max_visited_number = model.grid.as_ref().unwrap().get_max_visited_number();
     model.min_visited_number = model.grid.as_ref().unwrap().get_min_visited_number();
 
+    println!();
+
     try_store_result_to_db(&args, &model);
+    try_save_image(&model, None);
+    try_video_encoding(&model).unwrap_or_else(|err| {
+        eprintln!(
+            "{} {}",
+            "Error creating video from simulation frames:"
+                .color(colored::Color::Red)
+                .bold(),
+            err
+        );
+        std::process::exit(1);
+    });
 
     if args.verbosity > 1 {
         if args.json_output {
-            println!();
             model.print_model_as_json();
         } else {
-            println!();
             model.print_model_txt();
         }
     }
 
     if args.verbosity > 0 {
         if args.json_output {
-            println!();
             model.print_simulation_results_as_json();
         } else {
-            println!();
             model.print_simulation_results_txt();
         }
     } else if !args.quiet {
         if args.json_output {
-            println!();
             model.print_simulation_results_short_as_json();
         } else {
-            println!();
             model.print_simulation_results_short_txt();
-        }
-    }
-
-    try_save_image(model);
-    
-}
-
-
-fn try_save_image(model: SimModel) {
-    if model.image_file_name.is_some() {
-        if let Err(err) = save_grid_image(&model) {
-            eprintln!(
-                "{} {}",
-                "Error saving image:".color(colored::Color::Red).bold(),
-                err
-            );
         }
     }
 }
@@ -272,4 +265,119 @@ fn try_store_result_to_db(args: &args::Args, model: &SimModel) {
             }
         }
     }
+}
+
+pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Error>> {
+    if model.create_animation {
+        let encoder = if model.hw_encoding {
+            "hevc_videotoolbox"
+        } else {
+            "libx265"
+        };
+
+        // Check if ffmpeg is installed
+        if Command::new("ffmpeg").arg("-version").output().is_err() {
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "{}",
+                    "Program 'ffmpeg' must be installed. For Mac OSX use 'brew install ffmpeg'"
+                        .color(colored::Color::Red)
+                        .bold()
+                ),
+            )))?;
+        }
+
+        // Check that the video output file doesn't already exist
+        if Path::new(&model.animation_file_name).exists() {
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                format!(
+                    "{}",
+                    format!(
+                        "{}: '{}'",
+                        "Video output file already exists", model.animation_file_name
+                    )
+                    .color(colored::Color::Red)
+                    .bold()
+                ),
+            )))?;
+        }
+
+        if !model.quiet {
+            println!(
+                "{}",
+                "Creating video using H.265 encoding from simulation frames ..."
+                    .color(colored::Color::Green)
+                    .bold()
+            );
+        }
+
+        let video_cmd_output = Command::new("ffmpeg")
+            .args([
+                "-framerate",
+                model.frame_rate.to_string().as_str(),
+                "-pattern_type",
+                "glob",
+                "-i",
+                &format!("{}/frame_*.png", model.frames_dir),
+                "-c:v",
+                encoder,
+                "-pix_fmt",
+                "yuv420p",
+                &model.animation_file_name,
+            ])
+            .output();
+
+        if video_cmd_output.is_err() || !video_cmd_output.as_ref().unwrap().status.success() {
+            Err(Box::new(
+                    std::io::Error::other(
+                        format!("{}","Failed to create video from results. 'ffmpeg' exists, but the correct ffmpeg H.265/HEVC encoder is perhaps not installed?"
+                            .color(colored::Color::Red)
+                            .bold()),
+                    )
+                ))?;
+        } else {
+            if !model.quiet {
+                println!(
+                    "{} {}",
+                    "Video created successfully:"
+                        .color(colored::Color::Green)
+                        .bold(),
+                    model
+                        .animation_file_name
+                        .color(colored::Color::Green)
+                        .bold()
+                );
+            }
+            if model.delete_frames {
+                // Delete te entire output directory
+                if let Err(e) = fs::remove_dir_all(&model.frames_dir) {
+                    Err(Box::new(std::io::Error::other(format!(
+                        "{} '{}' : {}",
+                        "Failed to delete frames directory"
+                            .color(colored::Color::Red)
+                            .bold(),
+                        model.frames_dir.as_str(),
+                        e
+                    ))))?;
+                } else if !model.quiet {
+                    println!(
+                        "{}",
+                        "Frames directory deleted successfully."
+                            .color(colored::Color::Green)
+                            .bold()
+                    );
+                }
+            } else if !model.quiet {
+                println!(
+                    "{}",
+                    "Frames are kept in the output directory."
+                        .color(colored::Color::Yellow)
+                        .bold()
+                );
+            }
+        }
+    }
+    Ok(())
 }

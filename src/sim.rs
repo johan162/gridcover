@@ -1,5 +1,6 @@
 // use crate::cells::{calc_grid_coverage, mark_covered_cells};
 use crate::collision::is_grid_edge;
+use crate::image::try_save_image;
 use crate::model::SimModel;
 use crate::strategy::cutter_strategy;
 use crate::vector::Vector;
@@ -27,8 +28,9 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
     };
 
     let one_percent_cells = (model.grid_cells_x * model.grid_cells_y) / 100;
-    let steps_per_cell = (model.cell_size / model.step_size).floor() as usize;
-    let steps_per_tenth_percent = (one_percent_cells * steps_per_cell / 10).min(50) as u64;
+    let steps_per_cell = (model.cell_size / model.step_size).ceil() as usize;
+    let steps_per_tenth_percent = (one_percent_cells * steps_per_cell / 10).min(1) as u64;
+    let mut frame_counter: u64 = 0;
 
     // Run simulation until the first of the stopping conditions is met
     // - either the specified number of bounces is reached
@@ -136,8 +138,40 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
 
             if model.show_progress {
                 if model.battery_run_time > 0.0 {
+                    if model.generate_frames {
+                        print!(
+                            "\rFrame: {:>06}, Coverage: {:>6.2}% ({:>7}/{:>7} cells covered), Distance: {:>6.2}, Bounces: {:>4}, Sim-Time: {:02}:{:02}:{:02}, Battery capacity left: {:>5.1}%",
+                            frame_counter,
+                            current_coverage_percent,
+                            coverage_cell_count,
+                            model.grid_cells_x * model.grid_cells_y
+                                - model.grid_cells_obstacles_count,
+                            model.distance_covered,
+                            model.segment_number,
+                            model.sim_time_elapsed as u64 / 3600,
+                            (model.sim_time_elapsed as u64 % 3600) / 60,
+                            model.sim_time_elapsed as u64 % 60,
+                            model.battery_charge_left
+                        );
+                    } else {
+                        print!(
+                            "\rCoverage: {:>6.2}% ({:>7}/{:>7} cells covered), Distance: {:>6.2}, Bounces: {:>4}, Sim-Time: {:02}:{:02}:{:02}, Battery capacity left: {:>5.1}%",
+                            current_coverage_percent,
+                            coverage_cell_count,
+                            model.grid_cells_x * model.grid_cells_y
+                                - model.grid_cells_obstacles_count,
+                            model.distance_covered,
+                            model.segment_number,
+                            model.sim_time_elapsed as u64 / 3600,
+                            (model.sim_time_elapsed as u64 % 3600) / 60,
+                            model.sim_time_elapsed as u64 % 60,
+                            model.battery_charge_left
+                        );
+                    }
+                } else if model.generate_frames {
                     print!(
-                        "\rCoverage: {:>6.2}% ({:>7}/{:>7} cells covered), Distance: {:>6.2}, Bounces: {:>4}, Sim-Time: {:02}:{:02}:{:02}, Battery capacity left: {:>5.1}%",
+                        "\rFrame: {:>06}, Coverage: {:>6.2}% ({:>7}/{:>7} cells covered), Distance: {:>6.2}, Bounces: {:>4}, Sim-Time: {:02}:{:02}:{:02}",
+                        frame_counter,
                         current_coverage_percent,
                         coverage_cell_count,
                         model.grid_cells_x * model.grid_cells_y - model.grid_cells_obstacles_count,
@@ -146,7 +180,6 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
                         model.sim_time_elapsed as u64 / 3600,
                         (model.sim_time_elapsed as u64 % 3600) / 60,
                         model.sim_time_elapsed as u64 % 60,
-                        model.battery_charge_left
                     );
                 } else {
                     print!(
@@ -163,6 +196,16 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
                 }
                 std::io::stdout().flush().unwrap();
             }
+        }
+
+        if model.generate_frames && model.sim_steps % model.steps_per_frame == 0 {
+            let frame_filename = format!(
+                "{}/frame_{:07}.png",
+                model.frames_dir,
+                frame_counter
+            );
+            try_save_image(model, Some(frame_filename));
+            frame_counter += 1;
         }
     }
 }

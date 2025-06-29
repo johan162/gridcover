@@ -244,6 +244,43 @@ pub struct Args {
     /// Quiet, no output at all
     #[arg(long, short = 'q', default_value_t = false, action = clap::ArgAction::Set)]
     pub quiet: bool,
+
+    /// Generate frames for an animation
+    #[arg(long, short = 'f', default_value_t = false, action = clap::ArgAction::Set)]
+    pub generate_frames: bool,
+
+    /// Specify frame-rate for the animation
+    #[arg(long, short = 'F', default_value_t = 10,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<u64, String> {
+            let val: u64 = s.parse().map_err(|_| "Not a valid frame rate value".to_string())?;
+            if val >= 10 && val <= 120 {
+                Ok(val)
+            } else {
+                Err(format!("Frame rate must be between 10 and 120, got {}", val))
+            }
+        })
+    )]  
+    pub frame_rate: u64,
+
+    // Specify directory to save frames for animation
+    #[arg(long, default_value = "frames_dir", value_name = "FRAMES-DIR")]
+    pub frames_dir: String,
+
+    /// Generate an animation video from the frames
+    #[arg(long, short = 'a', default_value_t = false, action = clap::ArgAction::Set)]
+    pub create_animation: bool,
+
+    /// Animation file name
+    #[arg(long, default_value = "cutter_sim.mp4", value_name = "ANIMATION-FILE-NAME")]
+    pub animation_file_name: String,
+
+    /// Use HW assisted encoding for the animation. This is only available on macOS and Linux
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    pub hw_encoding: bool,
+
+    /// Delete frames after animation has been created
+    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    pub delete_frames: bool,
 }
 
 
@@ -290,6 +327,13 @@ impl Args {
             show_gridlines: if self.show_gridlines { self.show_gridlines } else { other.show_gridlines },
             database_file: self.database_file.or(other.database_file),
             quiet: if self.quiet { self.quiet } else { other.quiet },
+            generate_frames: if self.generate_frames { self.generate_frames } else { other.generate_frames },
+            frame_rate: if self.frame_rate != 10 { self.frame_rate } else { other.frame_rate },
+            frames_dir: if self.frames_dir != "frames_dir" { self.frames_dir } else { other.frames_dir },
+            create_animation: if self.create_animation { self.create_animation } else { other.create_animation },
+            animation_file_name: if self.animation_file_name != "cutter_sim.mp4" { self.animation_file_name } else { other.animation_file_name },
+            hw_encoding: if self.hw_encoding { self.hw_encoding } else { other.hw_encoding },
+            delete_frames: if self.delete_frames { self.delete_frames } else { other.delete_frames },
         }
     }
 }

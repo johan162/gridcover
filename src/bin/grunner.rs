@@ -252,7 +252,7 @@ fn main() {
         } else {
             // Use rayon for parallelism
             coverage_values.par_iter().for_each(|&coverage| {
-                let image_file = format!("{output_dir}/frame_{coverage:03}.png");
+                let image_file = format!("{output_dir}/frame_{coverage:04}.png");
 
                 let mut sim_args = common_args.clone();
                 sim_args.push("-o".to_string());

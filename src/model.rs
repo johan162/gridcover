@@ -1,7 +1,9 @@
+use std::fs;
+
 use crate::model::grid::Grid;
 use crate::{args, mapfile};
 use chrono::Duration;
-use colored::{Colorize};
+use colored::Colorize;
 use rand::Rng;
 use serde_json::json;
 
@@ -65,10 +67,18 @@ pub struct SimModel {
     pub battery_run_time: f64,
     pub battery_charge_time: f64,
     pub battery_charge_count: usize,
-    pub battery_charge_left: f64, // Percentage of battery charge left
+    pub battery_charge_left: f64,
     pub paper_size: papersize::PaperSize,
     pub map_file: Option<mapfile::MapFile>,
-    pub quiet: bool, // If true, no output to console
+    pub quiet: bool,
+    pub generate_frames: bool,
+    pub frames_dir: String,
+    pub frame_rate: u64,
+    pub steps_per_frame: u64,
+    pub create_animation: bool,
+    pub animation_file_name: String,
+    pub hw_encoding: bool,
+    pub delete_frames: bool,
 }
 
 // Define a constant for the simulation step size factor
@@ -113,6 +123,13 @@ impl SimModel {
         paper_size: papersize::PaperSize,
         map_file_name: Option<String>,
         quiet: bool,
+        generate_frames: bool,
+        frames_dir: String,
+        frame_rate: u64,
+        create_animation: bool,
+        animation_file_name: String,
+        hw_encoding: bool,
+        delete_frames: bool,
     ) -> Self {
         Self {
             start_x,
@@ -168,6 +185,14 @@ impl SimModel {
             num_obstacles: 0,
             map_file: None,
             quiet,
+            generate_frames,
+            frames_dir,
+            frame_rate,
+            steps_per_frame: 1,
+            create_animation,
+            animation_file_name,
+            hw_encoding,
+            delete_frames,
         }
     }
 
@@ -207,6 +232,13 @@ impl SimModel {
             args.paper_size,
             args.map_file_name.clone(),
             args.quiet,
+            args.generate_frames,
+            args.frames_dir.clone(),
+            args.frame_rate,
+            args.create_animation,
+            args.animation_file_name.clone(),
+            args.hw_encoding,
+            args.delete_frames,
         )
     }
 
@@ -233,7 +265,15 @@ impl SimModel {
                     "Perturb at Bounces": self.perturb,
                     "Perturb Segment": self.perturb_segment,
                     "Perturb Segment Percent": self.perturb_segment_percent * 100.0,
-                    "Parallel Processing": self.parallel,
+                },
+                "Frames": {
+                    "Enabled": self.generate_frames,
+                    "Directory": self.frames_dir,
+                    "Rate (fps)": self.frame_rate,
+                    "Create Animation": self.create_animation,
+                    "Animation File Name": self.animation_file_name,
+                    "HW Encoding": self.hw_encoding,
+                    "Delete Frames": self.delete_frames,
                 },
                 "Start": {
                     "Position": {
@@ -390,9 +430,19 @@ impl SimModel {
                     "Height (units)": self.grid_height,
                 },
                 "Steps": {
-                    "Total": self.sim_steps,
-                    "Size (units)": self.step_size,
-                    "Per cell": self.step_size / self.cell_size,
+                    "Total #": self.sim_steps,
+                    "Length (units)": self.step_size,
+                    "Steps/cell": self.step_size / self.cell_size,
+                    "Seconds/step": self.step_size / self.velocity,
+                    "Steps/second": (self.velocity / self.step_size).floor() as u32,
+                },
+                "Frames": {
+                    "Enabled": self.generate_frames,
+                    "Directory": self.frames_dir,
+                    "Rate (fps)": self.frame_rate,
+                    "Steps per frame": self.steps_per_frame,
+                    "Animation": self.create_animation,
+                    "Animation file name": self.animation_file_name,
                 },
                 "Output image": {
                     "Paper size": self.paper_size.get_json(),
@@ -525,8 +575,8 @@ fn json_to_console(json: &serde_json::Value, root_key: &str, indent: usize) {
     let column2 = column1 - indent;
     let column3 = column2 - indent;
     for (key, value) in json[root_key].as_object().unwrap_or_else(|| {
-        let emsg = format!("Internal Error json_to_console(): key '{}' does not exists or is not a valid JSON object", root_key).color(colored::Color::Red).bold();
-        eprintln!("{}", emsg);
+        let emsg = format!("Internal Error json_to_console(): key '{root_key}' does not exists or is not a valid JSON object").color(colored::Color::Red).bold();
+        eprintln!("{emsg}");
         std::process::exit(1);
     }) {
         if let Some(obj) = value.as_object() {
@@ -668,6 +718,57 @@ pub fn init_model(
     // If step size is not set then set it to 60% of the cell size
     if model.step_size <= 0.0 {
         model.step_size = model.cell_size * SIMULATION_STEP_SIZE_FRACTION_OF_CELL;
+    }
+
+    if model.create_animation {
+        model.generate_frames = true;
+    }
+
+    // If frame generation is enabled we must adjust step_size so it corresponds to the frame rate
+
+    if model.generate_frames && model.frame_rate > 0 {
+        if fs::metadata(&model.frames_dir).is_ok() {
+            return Err(format!(
+                "Output frame directory '{}' already exists. Please remove it or change the output directory.",
+                model.frames_dir
+            )
+            .color(colored::Color::Red)
+            .bold()
+            .into());
+        }
+
+        if model.velocity / model.frame_rate as f64
+            > model.cell_size * SIMULATION_STEP_SIZE_FRACTION_OF_CELL
+        {
+            // We need to generate a frame every n:th step to get as close as possible to the frame rate
+            // Will us the user or automatically determined step size as the base
+            model.steps_per_frame =
+                (model.velocity / model.frame_rate as f64 / model.step_size).ceil() as u64;
+
+            // Give a warning that the step size is too large and we might not get the desired frame rate
+            if model.steps_per_frame > 1 {
+                eprintln!("{}",
+                    format!("Warning: Simulation will generate frames every {} steps which gives an effective frame rate of {:.02} fps.",
+                        model.steps_per_frame,
+                        model.velocity / model.steps_per_frame as f64 / model.step_size ).color(colored::Color::Yellow).bold()
+                );
+            }
+        } else {
+            model.step_size = model.velocity / model.frame_rate as f64;
+        }
+
+        fs::create_dir_all(&model.frames_dir).map_err(|e| {
+            format!(
+                "{}: {}",
+                format!(
+                    "Failed to create output frame directory '{}'",
+                    model.frames_dir
+                )
+                .color(colored::Color::Red)
+                .bold(),
+                e
+            )
+        })?;
     }
 
     // Use the user-defined start position

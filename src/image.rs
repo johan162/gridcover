@@ -1,8 +1,21 @@
 use crate::model::grid::Cell;
 use colored::Colorize;
+use crate::model::SimModel;
+
+pub fn try_save_image(model: &SimModel, override_filename: Option<String>) {
+    if model.image_file_name.is_some() || override_filename.is_some() {
+        if let Err(err) = save_grid_image(&model, override_filename) {
+            eprintln!(
+                "{} {}",
+                "Error saving image:".color(colored::Color::Red).bold(),
+                err
+            );
+        }
+    }
+}
 
 /// Create a PNG image of the coverage grid with colored squares
-pub fn save_grid_image(model: &crate::model::SimModel) -> Result<(), Box<dyn std::error::Error>> {
+fn save_grid_image(model: &crate::model::SimModel, override_filename: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
     // Convert mm to pixels using DPI (Dots Per Inch)
     let pixels_per_mm = model.dpi as f64 / 25.4;
 
@@ -149,7 +162,11 @@ pub fn save_grid_image(model: &crate::model::SimModel) -> Result<(), Box<dyn std
         }
     }
 
-    img.save(model.image_file_name.as_ref().unwrap())?;
+    if let Some(filename) = override_filename {
+        img.save(filename)?;
+    } else {
+        img.save(model.image_file_name.as_ref().unwrap())?;
+    }
 
     Ok(())
 }
