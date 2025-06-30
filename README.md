@@ -186,6 +186,16 @@ At least one stopping condition must be specified:
 - `args-write-file-name [ARGS-FILE-NAME]` - Write program arguments file in TOML format
 - `-i, args-read-file-name [ARGS-FILE-NAME]` - Read program arguments from a TOML file, arguments also specified on the command line will override the file
 
+### Frames and Animation generation
+- `-f, --generate-frames <TRUE/FALSE>`
+- `-F, frame-rate <FRAME-RATE>`
+- `--frames-dir <FRAME-DIR>`
+- `-a, --create-animation <TRUE/FALSE>`
+- `--animation-file-name <ANIMATION-FILE-NAME>`
+- `--hw-encoding <TRUE/FALSE>`
+- `--delete-frames <TRUE/FALSE>`
+
+
 ### Behavior Options
 - `-C, --track-center <TRACK_CENTER>` - Track mower center position in image (default: false)
 - `-R, --show-progress <5GRESS>` - Show progress bar during simulation (default: false)
@@ -428,9 +438,22 @@ Options:
           Store simulation results and model parameters in SQLite database file
   -q, --quiet <QUIET>
           Quiet, no output at all [default: false] [possible values: true, false]
+  -f, --generate-frames <GENERATE_FRAMES>
+          Generate frames for an animation [default: false] [possible values: true, false]
+  -F, --frame-rate <FRAME_RATE>
+          Specify frame-rate for the animation [default: 10]
+      --frames-dir <FRAMES-DIR>
+          [default: frames_dir]
+  -a, --create-animation <CREATE_ANIMATION>
+          Generate an animation video from the frames [default: false] [possible values: true, false]
+      --animation-file-name <ANIMATION-FILE-NAME>
+          Animation file name [default: cutter_sim.mp4]
+      --hw-encoding <HW_ENCODING>
+          Use HW assisted encoding for the animation. This is only available on macOS and Linux [default: true] [possible values: true, false]
+      --delete-frames <DELETE_FRAMES>
+          Delete frames after animation has been created [default: false] [possible values: true, false]
   -h, --help
           Print help
   -V, --version
           Print version
-
 ```
