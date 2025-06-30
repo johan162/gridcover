@@ -796,8 +796,8 @@ pub fn init_model(
 pub fn setup_grid_size(model: &mut SimModel) -> Result<(), Box<dyn std::error::Error + 'static>> {
     model.grid_cells_x = (model.grid_width / model.cell_size).ceil() as usize;
     model.grid_cells_y = (model.grid_height / model.cell_size).ceil() as usize;
-    if model.grid_cells_x * model.grid_cells_y > 10_000_000 {
-        return Err("Grid size is too large (>10,000,000).".into());
+    if model.grid_cells_x * model.grid_cells_y > 100_000_000 {
+        return Err(format!("{}","Grid size is too large (>100,000,000).".color(colored::Color::Red).bold()).into());
     }
     model.grid_width = model.grid_cells_x as f64 * model.cell_size;
     model.grid_height = model.grid_cells_y as f64 * model.cell_size;
@@ -810,9 +810,9 @@ pub fn setup_grid_size(model: &mut SimModel) -> Result<(), Box<dyn std::error::E
     }
 
     if model.step_size >= model.cell_size {
-        return Err(format!(
-            "Step size {} must be smaller than square size {}",
-            model.step_size, model.cell_size
+        return Err(format!("{}",
+            format!("Step size {} must be smaller than square size {}",
+            model.step_size, model.cell_size).color(colored::Color::Red).bold()
         )
         .into());
     }
