@@ -16,6 +16,7 @@ pub mod cuttertype;
 pub mod grid;
 pub mod papersize;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct SimModel {
     pub start_x: f64,
