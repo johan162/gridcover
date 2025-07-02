@@ -10,18 +10,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
         // Determine the encoder based on the model settings and OS
         let encoder = get_encoder(model)?;
 
-        // Check if ffmpeg is installed
-        if Command::new("ffmpeg").arg("-version").output().is_err() {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!(
-                    "{}",
-                    "Program 'ffmpeg' must be installed. For Mac OSX use 'brew install ffmpeg'"
-                        .color(colored::Color::Red)
-                        .bold()
-                ),
-            )))?;
-        }
+        is_ffmpeg_installed()?;
 
         // Check that the video output file doesn't already exist
         if Path::new(&model.animation_file_name).exists() {
@@ -48,6 +37,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
             );
         }
 
+        // Build the ffmpeg command to create the video
         let video_cmd_output = Command::new("ffmpeg")
             .args([
                 "-framerate",
@@ -108,7 +98,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                 println!(
                     "{}",
                     "Frames are kept in the output directory."
-                        .color(colored::Color::Yellow)
+                        .color(colored::Color::Green)
                         .bold()
                 );
             }
@@ -116,6 +106,24 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
     }
     Ok(())
 }
+
+fn is_ffmpeg_installed() -> Result<(), Box<dyn Error>> {
+    if Command::new("ffmpeg").arg("-version").output().is_err() {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!(
+                "{}",
+                "Program 'ffmpeg' must be installed. For Mac OSX use 'brew install ffmpeg'"
+                    .color(colored::Color::Red)
+                    .bold()
+            ),
+        )));
+    }
+    Ok(())
+}
+
+// The following four detection functions uses heuristics to determine the presence of hardware encoders.
+// They are not foolproof, sorry.
 
 fn has_nvidia_gpu() -> bool {
     Command::new("nvidia-smi")
@@ -169,8 +177,8 @@ fn get_encoder(model: &SimModel) -> Result<&'static str, Box<dyn Error>> {
                 if !model.quiet {
                     println!(
                         "{}",
-                        "Using NVIDIA hardware encoder (hevc_nvenc)."
-                            .color(colored::Color::Yellow)
+                        "Linux: Using NVIDIA hardware encoder (hevc_nvenc)."
+                            .color(colored::Color::Green)
                             .bold()
                     );
                 }
@@ -179,8 +187,8 @@ fn get_encoder(model: &SimModel) -> Result<&'static str, Box<dyn Error>> {
                 if !model.quiet {
                     println!(
                         "{}",
-                        "Using AMD hardware encoder (hevc_amf)."
-                            .color(colored::Color::Yellow)
+                        "Linux: Using AMD hardware encoder (hevc_amf)."
+                            .color(colored::Color::Green)
                             .bold()
                     );
                 }
@@ -189,8 +197,8 @@ fn get_encoder(model: &SimModel) -> Result<&'static str, Box<dyn Error>> {
                 if !model.quiet {
                     println!(
                         "{}",
-                        "Using Intel hardware encoder (hevc_vaapi)."
-                            .color(colored::Color::Yellow)
+                        "Linux: Using Intel hardware encoder (hevc_vaapi)."
+                            .color(colored::Color::Green)
                             .bold()
                     );
                 }
@@ -199,8 +207,8 @@ fn get_encoder(model: &SimModel) -> Result<&'static str, Box<dyn Error>> {
                 if !model.quiet {
                     println!(
                         "{}",
-                        "Using Vulkan hardware encoder (hevc_vulkan)."
-                            .color(colored::Color::Yellow)
+                        "Linux: Using Vulkan hardware encoder (hevc_vulkan)."
+                            .color(colored::Color::Green)
                             .bold()
                     );
                 }
@@ -209,7 +217,7 @@ fn get_encoder(model: &SimModel) -> Result<&'static str, Box<dyn Error>> {
                 if !model.quiet {
                     println!(
                         "{}",
-                        "No supported hardware encoder found. Falling back to 'libx265' software encoding."
+                        "Linux: No supported hardware encoder found. Falling back to 'libx265' software encoding."
                             .color(colored::Color::Yellow)
                             .bold()
                     );
