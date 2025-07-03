@@ -2,69 +2,18 @@ use crate::model::SimModel;
 use colored::Colorize;
 use std::error::Error;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
 pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Error>> {
     if model.create_animation {
-        // Determine the encoder based on the model settings and OS
-        let encoder = get_encoder(model)?;
-
+        
         is_ffmpeg_installed()?;
+        let encoder = get_encoder(model)?;
+        let animation_file_name = get_animation_file_name(model)?;
 
-        let mut animation_file_name = model.animation_file_name.clone();
-
-        // Check that the video output file doesn't already exist
-        if Path::new(&animation_file_name).exists() {
-            // Try adding numbers 1-9 at the end of the file name
-            let mut found_new_name = false;
-            for i in 1..=9 {
-                let new_file_name =
-                    format!("{}_{}.mp4", animation_file_name.trim_end_matches(".mp4"), i);
-                if !Path::new(&new_file_name).exists() {
-                    animation_file_name = new_file_name;
-                    found_new_name = true;
-                    break;
-                }
-            }
-
-            if found_new_name {
-                if !model.quiet {
-                    println!(
-                        "{}",
-                        format!(
-                            "{}: '{}'",
-                            "Video output file already exists, using a new name",
-                            animation_file_name
-                        )
-                        .color(colored::Color::Yellow)
-                        .bold()
-                    );
-                }
-            } else {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::AlreadyExists,
-                    format!(
-                        "{}",
-                        format!(
-                            "{}: '{}'",
-                            "Video output file already exists", animation_file_name
-                        )
-                        .color(colored::Color::Red)
-                        .bold()
-                    ),
-                )))?;
-            }
-        }
-
-        if !model.quiet {
-            println!(
-                "{}",
-                "Creating video using H.265 encoding from simulation frames ..."
-                    .color(colored::Color::Green)
-                    .bold()
-            );
-        }
+        try_print_encoding_info(model, encoder, &animation_file_name);
 
         // Build the ffmpeg command to create the video
         // Example1 (Linux): ffmpeg -framerate 10 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_nvenc        -pix_fmt yuv420p cutter_sim.mp4
@@ -101,7 +50,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                     "Video created successfully:"
                         .color(colored::Color::Green)
                         .bold(),
-                    animation_file_name.color(colored::Color::Green).bold()
+                    animation_file_name.color(colored::Color::Cyan).bold()
                 );
             }
             if model.delete_frames {
@@ -134,6 +83,82 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
         }
     }
     Ok(())
+}
+
+fn try_print_encoding_info(model: &SimModel, encoder: &'static str, animation_file_name: &String) {
+    if !model.quiet {
+        println!(
+            "{}",
+            format!(
+                "Creating video using H.265 encoding from frames using \"{encoder}\" encoder"
+            )
+            .color(colored::Color::Green)
+            .bold()
+        );
+
+        if model.verbosity > 0 {
+            println!(
+                "{} {}",
+                "Running command:".color(colored::Color::Green).bold(),
+                format!(
+                    "ffmpeg -framerate {} -pattern_type glob -i '{}/frame_*.png' -c:v {} -pix_fmt yuv420p {}",
+                    model.frame_rate,
+                    model.frames_dir,
+                    encoder,
+                    animation_file_name
+                )
+                .color(colored::Color::Cyan)
+                .bold()
+            );
+        }
+        // Empty IO buffer to make sure the output is flushed immediately
+        std::io::stdout().flush().unwrap();
+    }
+}
+
+fn get_animation_file_name(model: &SimModel) -> Result<String, Box<dyn Error>> {
+    let mut animation_file_name = model.animation_file_name.clone();
+    if Path::new(&animation_file_name).exists() {
+        // Try adding numbers 1-9 at the end of the file name
+        let mut found_new_name = false;
+        for i in 1..=9 {
+            let new_file_name =
+                format!("{}_{}.mp4", animation_file_name.trim_end_matches(".mp4"), i);
+            if !Path::new(&new_file_name).exists() {
+                animation_file_name = new_file_name;
+                found_new_name = true;
+                break;
+            }
+        }
+
+        if found_new_name {
+            if !model.quiet {
+                println!(
+                    "{}",
+                    format!(
+                        "{}: '{}'",
+                        "Video output file already exists, using a new name", animation_file_name
+                    )
+                    .color(colored::Color::Yellow)
+                    .bold()
+                );
+            }
+        } else {
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                format!(
+                    "{}",
+                    format!(
+                        "{}: '{}'",
+                        "Video output file already exists", animation_file_name
+                    )
+                    .color(colored::Color::Red)
+                    .bold()
+                ),
+            )))?;
+        }
+    }
+    Ok(animation_file_name)
 }
 
 fn is_ffmpeg_installed() -> Result<(), Box<dyn Error>> {
