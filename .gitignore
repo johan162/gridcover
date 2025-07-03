@@ -1,5 +1,8 @@
 /target
 args.toml
 coverage.png
+frames_dir
+*.mp4
+*.png
 
 
