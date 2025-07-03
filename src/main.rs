@@ -171,6 +171,7 @@ fn main() {
         if args.json_output {
             model.print_simulation_results_as_json();
         } else {
+            println!();
             model.print_simulation_results_txt();
         }
     } else if !args.quiet {

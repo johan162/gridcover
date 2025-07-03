@@ -12,20 +12,49 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
 
         is_ffmpeg_installed()?;
 
+        let mut animation_file_name = model.animation_file_name.clone();
+
         // Check that the video output file doesn't already exist
-        if Path::new(&model.animation_file_name).exists() {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::AlreadyExists,
-                format!(
-                    "{}",
+        if Path::new(&animation_file_name).exists() {
+            // Try adding numbers 1-9 at the end of the file name
+            let mut found_new_name = false;
+            for i in 1..=9 {
+                let new_file_name =
+                    format!("{}_{}.mp4", animation_file_name.trim_end_matches(".mp4"), i);
+                if !Path::new(&new_file_name).exists() {
+                    animation_file_name = new_file_name;
+                    found_new_name = true;
+                    break;
+                }
+            }
+
+            if found_new_name {
+                if !model.quiet {
+                    println!(
+                        "{}",
+                        format!(
+                            "{}: '{}'",
+                            "Video output file already exists, using a new name",
+                            animation_file_name
+                        )
+                        .color(colored::Color::Yellow)
+                        .bold()
+                    );
+                }
+            } else {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
                     format!(
-                        "{}: '{}'",
-                        "Video output file already exists", model.animation_file_name
-                    )
-                    .color(colored::Color::Red)
-                    .bold()
-                ),
-            )))?;
+                        "{}",
+                        format!(
+                            "{}: '{}'",
+                            "Video output file already exists", animation_file_name
+                        )
+                        .color(colored::Color::Red)
+                        .bold()
+                    ),
+                )))?;
+            }
         }
 
         if !model.quiet {
@@ -38,6 +67,9 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
         }
 
         // Build the ffmpeg command to create the video
+        // Example1 (Linux): ffmpeg -framerate 10 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_nvenc        -pix_fmt yuv420p cutter_sim.mp4
+        // Example2 (MacOS): ffmpeg -framerate 10 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_videotoolbox -pix_fmt yuv420p cutter_sim.mp4
+        //
         let video_cmd_output = Command::new("ffmpeg")
             .args([
                 "-framerate",
@@ -50,7 +82,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                 encoder,
                 "-pix_fmt",
                 "yuv420p",
-                &model.animation_file_name,
+                &animation_file_name,
             ])
             .output();
 
@@ -69,10 +101,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                     "Video created successfully:"
                         .color(colored::Color::Green)
                         .bold(),
-                    model
-                        .animation_file_name
-                        .color(colored::Color::Green)
-                        .bold()
+                    animation_file_name.color(colored::Color::Green).bold()
                 );
             }
             if model.delete_frames {
