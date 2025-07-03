@@ -314,13 +314,13 @@ pub struct Args {
     pub generate_frames: bool,
 
     /// Specify frame-rate for the animation
-    #[arg(long, short = 'F', default_value_t = 10,
+    #[arg(long, short = 'F', default_value_t = 5,
         value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<u64, String> {
             let val: u64 = s.parse().map_err(|_| "Not a valid frame rate value".to_string())?;
-            if val >= 10 && val <= 120 {
+            if val >= 5 && val <= 30 {
                 Ok(val)
             } else {
-                Err(format!("Frame rate must be between 10 and 120, got {}", val))
+                Err(format!("Frame rate must be between 5 and 30, got {}", val))
             }
         })
     )]  
