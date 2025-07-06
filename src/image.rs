@@ -3,14 +3,14 @@ use crate::model::grid::Cell;
 use colored::Colorize;
 
 pub fn try_save_image(model: &SimModel, override_filename: Option<String>) {
-    if (model.image_file_name.is_some() || override_filename.is_some())
-        && let Err(err) = save_grid_image(model, override_filename)
-    {
-        eprintln!(
-            "{} {}",
-            "Error saving image:".color(colored::Color::Red).bold(),
-            err
-        );
+    if model.image_file_name.is_some() || override_filename.is_some() {
+        if let Err(err) = save_grid_image(model, override_filename) {
+            eprintln!(
+                "{} {}",
+                "Error saving image:".color(colored::Color::Red).bold(),
+                err
+            );
+        }
     }
 }
 

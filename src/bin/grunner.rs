@@ -74,35 +74,35 @@ fn main() {
     let args = Args::parse();
 
     // Delete output directory if it exists
-    if args.delete_output_dir
-        && let Ok(dir) = fs::metadata(&args.output_dir)
-    {
-        if dir.is_file() {
-            eprintln!(
-                "{}",
-                "Output directory name exists as a file, please choose a different name."
-                    .color(colored::Color::Red)
-                    .bold()
-            );
-            return;
+    if args.delete_output_dir {
+        if let Ok(dir) = fs::metadata(&args.output_dir) {
+            if dir.is_file() {
+                eprintln!(
+                    "{}",
+                    "Output directory name exists as a file, please choose a different name."
+                        .color(colored::Color::Red)
+                        .bold()
+                );
+                return;
+            }
+            if !args.quiet {
+                println!(
+                    "{}",
+                    "Output directory exists, deleting it..."
+                        .color(colored::Color::Yellow)
+                        .bold()
+                );
+            }
+            fs::remove_dir_all(&args.output_dir).unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    "Failed to delete existing output directory"
+                        .color(colored::Color::Red)
+                        .bold()
+                        .to_string()
+                )
+            });
         }
-        if !args.quiet {
-            println!(
-                "{}",
-                "Output directory exists, deleting it..."
-                    .color(colored::Color::Yellow)
-                    .bold()
-            );
-        }
-        fs::remove_dir_all(&args.output_dir).unwrap_or_else(|_| {
-            panic!(
-                "{}",
-                "Failed to delete existing output directory"
-                    .color(colored::Color::Red)
-                    .bold()
-                    .to_string()
-            )
-        });
     }
 
     // Number of logical CPU cores

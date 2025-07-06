@@ -16,6 +16,7 @@ pub mod cuttertype;
 pub mod grid;
 pub mod papersize;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct SimModel {
     pub start_x: f64,
@@ -79,6 +80,7 @@ pub struct SimModel {
     pub animation_file_name: String,
     pub hw_encoding: bool,
     pub delete_frames: bool,
+    pub ffmpeg_encoding_duration: Option<Duration>,
 }
 
 // Define a constant for the simulation step size factor
@@ -193,6 +195,7 @@ impl SimModel {
             animation_file_name,
             hw_encoding,
             delete_frames,
+            ffmpeg_encoding_duration: None, 
         }
     }
 
@@ -394,7 +397,7 @@ impl SimModel {
                 "Time": {
                      "CPU time": format!("{:02}:{:02}:{:02}.{:03}",
                         self.cpu_time.num_hours(),
-                        self.cpu_time.num_minutes(),
+                        self.cpu_time.num_minutes() % 60,
                         self.cpu_time.num_seconds() % 60,
                         self.cpu_time.num_milliseconds() % 1000),
 
@@ -403,6 +406,11 @@ impl SimModel {
                     "Min.Cov.Time": format!("{:02}:{:02}:{:02}",
                         t_hours, t_minutes, t_seconds),
                     "Efficiency": format!("{efficiency:.2}").parse::<f64>().unwrap(),
+                    "FFmpeg Encoding Duration": self.ffmpeg_encoding_duration.map(|d| format!("{:02}:{:02}:{:02}.{:03}",
+                        d.num_hours(),
+                        d.num_minutes() % 60,
+                        d.num_seconds() % 60,
+                        d.num_milliseconds() % 1000)),
                 },
                 "Start": {
                     "Position": {
@@ -443,6 +451,8 @@ impl SimModel {
                     "Steps per frame": self.steps_per_frame,
                     "Animation": self.create_animation,
                     "Animation file name": self.animation_file_name,
+                    "HW Encoding": self.hw_encoding,
+                    "Delete frames": self.delete_frames,
                 },
                 "Output image": {
                     "Paper size": self.paper_size.get_json(),
@@ -795,8 +805,8 @@ pub fn init_model(
 pub fn setup_grid_size(model: &mut SimModel) -> Result<(), Box<dyn std::error::Error + 'static>> {
     model.grid_cells_x = (model.grid_width / model.cell_size).ceil() as usize;
     model.grid_cells_y = (model.grid_height / model.cell_size).ceil() as usize;
-    if model.grid_cells_x * model.grid_cells_y > 10_000_000 {
-        return Err("Grid size is too large (>10,000,000).".into());
+    if model.grid_cells_x * model.grid_cells_y > 100_000_000 {
+        return Err(format!("{}","Grid size is too large (>100,000,000).".color(colored::Color::Red).bold()).into());
     }
     model.grid_width = model.grid_cells_x as f64 * model.cell_size;
     model.grid_height = model.grid_cells_y as f64 * model.cell_size;
@@ -809,9 +819,9 @@ pub fn setup_grid_size(model: &mut SimModel) -> Result<(), Box<dyn std::error::E
     }
 
     if model.step_size >= model.cell_size {
-        return Err(format!(
-            "Step size {} must be smaller than square size {}",
-            model.step_size, model.cell_size
+        return Err(format!("{}",
+            format!("Step size {} must be smaller than square size {}",
+            model.step_size, model.cell_size).color(colored::Color::Red).bold()
         )
         .into());
     }

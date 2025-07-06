@@ -19,6 +19,7 @@ use model::{SimModel, init_model};
 use rand::Rng;
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
+use video::try_video_encoding;
 
 fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &mut SimModel) {
     // Check if we should randomize the start position
@@ -148,7 +149,7 @@ fn main() {
 
     try_store_result_to_db(&args, &model);
     try_save_image(&model, None);
-    video::try_video_encoding(&model).unwrap_or_else(|err| {
+    let ffmpeg_encoding_duration = try_video_encoding(&model).unwrap_or_else(|err| {
         eprintln!(
             "{} {}",
             "Error creating video from simulation frames:"
@@ -156,13 +157,18 @@ fn main() {
                 .bold(),
             err
         );
-        std::process::exit(1);
+        chrono::Duration::zero()
     });
+
+    if ffmpeg_encoding_duration != chrono::Duration::zero() {
+        model.ffmpeg_encoding_duration = Some(ffmpeg_encoding_duration);
+    }
 
     if args.verbosity > 1 {
         if args.json_output {
             model.print_model_as_json();
         } else {
+            println!();
             model.print_model_txt();
         }
     }
@@ -171,12 +177,14 @@ fn main() {
         if args.json_output {
             model.print_simulation_results_as_json();
         } else {
+            println!();
             model.print_simulation_results_txt();
         }
     } else if !args.quiet {
         if args.json_output {
             model.print_simulation_results_short_as_json();
         } else {
+            println!();
             model.print_simulation_results_short_txt();
         }
     }
