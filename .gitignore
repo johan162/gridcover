@@ -4,5 +4,14 @@ coverage.png
 frames_dir
 *.mp4
 *.png
+*.sqlite3
+*.db
+*.txt
+*.json
+*.log
+*.csv
+*.rs.bk
+*.rs.bk.*
+*.rs.bk~
 
 

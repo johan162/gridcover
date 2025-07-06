@@ -1,20 +1,23 @@
-# GridCover - Autonomous Lawn Mower Simulation
+# GridCover - Autonomous Lawn Mower ("cutter") Simulation
 
 ## Overview
-GridCover is a simulation program that models how an autonomous lawn mower, or "cutter", cuts grass in a rectangular area with optionally placed obstacles. The simulation tracks the cutter as it moves across the area, bouncing off boundaries and specified obstacles and changing direction according to the defined strategy to achieve complete grass coverage. 
+
+GridCover is a simulation program that physically models how an autonomous lawn mower, or "cutter", cuts grass in a rectangular area with optionally placed obstacles. The simulation tracks the cutter as it moves across the area, bouncing off boundaries and specified obstacles and changing direction according to the defined strategy to achieve complete grass coverage. 
 
 The simulation is a close physical model of the cutting mechanism of the two most common types of robotic cutter. Currently the bounding area is a rectangle where an optional obstacle-map can be added with a user-specified number of obstacles. Obtsacles can be shaped like reactangles, arbitrary polygons, circles or line with a thickness. The simulation is accurate down to a chosen cell size (usually somewhere around 1cm) and hence will very accurately simulate real time. The performance is such that it is possible to simulate a 100x100m rectangle with 1cm cell size in slightly less than 3min on a desktop computer.
 
-The complete simulation can be viewed as a cretaed animation with a user specifeid fps or as an image of the completed simulation (or both)
+The completed simulation can be shown as a animated video with a user specified fps or as an image of the completed simulation showing the paths of the cutter and obstacles (or both).
 
 
 ### Main features
 
-- **Realistic physics**, with configurable cutter detaiks like mower radius, speed, and direction perturbation
+- **Simulation based on accurate physics**, with configurable cutter detaiks like mower radius, speed, and direction perturbation
 - **Multiple stopping conditions**, bounces, time, coverage percentage, distance, or simulation steps
 - **Visual output** with color-coded PNG images showing coverage patterns os as a animated video of the entire simulation
 - **Reproducible results** using random seeds for deterministic simulations
-- **Flexible configuration** with extensive command-line options
+- **Flexible configuration** with extensive command-line options (see below)
+- **SQLite Database support** Option to store simulation results in a SQLite DB
+- **HW Assisted animation encoding** Creation of animated video of simulation with support for HW encoding
 
 
 ## Installation
@@ -34,115 +37,287 @@ by default the program wil be installed in `/usr/local/bin`
 
 See the user guide for installation from source
 
-
 ### Windows
 
 See the user guide for installation from source
 
-# Full list of command line options
 
-See user guide for categorization of these options together with detailed explanations.
+# Command Line Options
+
+Below is a categorized list of all command line options for **gridcover** to help to find and understand the available configuration parameters.
+
+## Simulation Area & Grid
+- `-W, --grid-width <GRID_WIDTH>`  Width in units of the grid
+- `-H, --grid-height <GRID_HEIGHT>`  Height in units of the grid
+- `-s, --square-size <SQUARE_SIZE>`  Size of each grid square
+- `-M, --map-file-name <MAP-FILE>`  Path to map file with obstacles
+
+## Cutter & Physics
+- `-r, --radius <RADIUS>`  Radius of the cutter plate
+- `-l, --blade-len <BLADE_LEN>`  Length of knife blade
+- `-T, --cutter-type <CUTTER-TYPE>`  Cutter type: 'blade', 'circular'
+- `-v, --velocity <VELOCITY>`  Movement velocity in units/second
+- `-x, --start-x <START_X>`  Starting X coordinate for the cutter, random if not specified
+- `-y, --start-y <START_Y>`  Starting Y coordinate for the cutter, random if not specified
+- `--dir-x <DIR_X>`  Start direction X component, random if not specified
+- `--dir-y <DIR_Y>`  Start direction Y component, random if not specified
+- `-p, --perturb <True/False>`  Use perturbation angle for direction changes at edge bound
+- `-k, --perturb-segment <True/False>`  Use perturbation randomly while moving in a straight line
+- `--perturb-segment-percent <PERTURB_SEGMENT_PERCENT>`  Perturb segment percent chance per cell travelled
+- `-C, --track-center <True/False>`  Turn visual centerpoint tracking on or off in the output image
+
+
+## Simulation Control & Stopping Conditions
+- `-z, --step-size <STEP_SIZE>`  Simulation step size in units, automatically determined if not specified
+- `-b, --stop-bounces <STOP_BOUNCES>`  Maximum number of bounces before ending simulation
+- `-t, --stop-time <STOP_TIME>`  Maximum simulated time when to stop (seconds)
+- `-c, --stop-coverage <STOP_COVERAGE>`  Stop when reaching this coverage percentage
+- `-m, --stop-simsteps <STOP_SIMSTEPS>`  Stop after specified number of simulation steps
+- `-d, --stop-distance <STOP_DISTANCE>`  Stop after specified distance covered
+
+## Battery & Charging
+- `-B, --battery-run-time <BATTERY_RUN_TIME>`  Battery duration in minutes
+- `-A, --battery-charge-time <BATTERY_CHARGE_TIME>`  Battery charging time in minutes
+
+## Output & Visualization
+- `-o <IMAGE-FILE-NAME>`  Output image file name
+- `--image-width-mm <IMAGE_WIDTH_MM>`  Image output width in mm
+- `--image-height-mm <IMAGE_HEIGHT_MM>`  Image output height in mm
+- `-Z, --paper-size <PAPER-SIZE>`  Paper size for output image
+- `-D, --dpi <DPI>`  DPI setting for image output
+- `-G, --show-gridlines <True/False>`  Show or hide gridlines in output image
+
+## Animation & Video
+- `-f, --generate-frames <True/False>`  Generate frames for an animation
+- `-F, --frame-rate <FRAME_RATE>`  Specify frame-rate for the animation
+- `--frames-dir <FRAMES-DIR>`  Directory for animation frames
+- `-a, --create-animation <True/False>`  Generate an animation video from the frames (implies `-f` if not set)
+- `--animation-file-name <ANIMATION-FILE-NAME>`  Animation file name
+- `--hw-encoding <True/False>`  Use HW assisted encoding for animation (macOS/Linux)
+- `--delete-frames <True/False>`  Delete frames after animation has been created
+
+## Output Formatting & Reporting
+- `-J, --json-output <True/False>`  Print result of simulation as a JSON object
+- `--verbosity <VERBOSITY>`  Verbosity during simulation, 0 (default), 1, 2
+- `-R, --show-progress <True/False>`  Show progress bar during simulation
+- `-q, --quiet <True/False>`  Quiet, no output at all
+
+## Randomness & Reproducibility
+- `-S, --random-seed <RANDOM_SEED>`  Random seed for reproducible results
+
+## Parallelization & Performance
+- `-P, --parallel <True/False>`  **Deprecated**. Use parallel processing to speed up simulation
+
+## Configuration Files & Database
+- `--args-write-file-name <ARGS-FILE-NAME>`  Write program arguments file in TOML format
+- `-i, --args-read-file-name <ARGS-FILE-NAME>`  Read program arguments from a TOML file
+- `-Q, --database-file <DATABASE-FILE>`  Store simulation results and model parameters in SQLite database file
+
+## Help & Version
+- `-h, --help`  Print help
+- `-V, --version`  Print version
+
+# Examples
+
+## 1. Basic usage
+
+Use default values and simulate covering 50% of the default rectangle size (10x10 units). As long as all values are consistent the deafult units can be thought of to be cm, dm, m etc. However, the default values are set so it makes physical sense thinking of units as meters.
+
+This, the most basic of all examples, answers the question *"How long time does it take to cut X % of the lawn"* It is important to
+realize that the result is just one possible outcome from the distribution of possible outcomes. Running the same example one more time
+will give another outcome from the distribution.
+
+Note: By specifying the random seed (with `-S`) the exact same result can be achieved no matter how many time the example is run.
+
 
 ```txt
-Grid coverage simulation
+$> gridcover -R true -c 50
+Coverage:  50.00% ( 125002/ 250000 cells covered), Distance: 225.66, Bounces:   32, Sim-Time: 00:12:32
 
-Usage: gridcover [OPTIONS]
-
-Options:
-  -o <IMAGE-FILE-NAME>
-          Output image file name
-      --args-write-file-name <ARGS-FILE-NAME>
-          Write program arguments file in TOML format
-  -i, --args-read-file-name <ARGS-FILE-NAME>
-          Read program arguments from a TOML file
-  -z, --step-size <STEP_SIZE>
-          Simulation step size in units if not specified will be calculated from the square size [default: 0]
-  -r, --radius <RADIUS>
-          Radius of the circle [default: 0.2]
-  -l, --blade-len <BLADE_LEN>
-          Length of knife blade [default: 0.05]
-  -W, --grid-width <GRID_WIDTH>
-          Width in units of the grid [default: 0]
-  -H, --grid-height <GRID_HEIGHT>
-          Height in units of the grid [default: 0]
-  -s, --square-size <SQUARE_SIZE>
-          Size of each grid square [default: -1]
-  -x, --start-x <START_X>
-          Starting X coordinate for the circle center [default: -1]
-  -y, --start-y <START_Y>
-          Starting Y coordinate for the circle center [default: 0]
-  -v, --velocity <VELOCITY>
-          Movement velocity in units/second [default: 0.3]
-      --dir-x <DIR_X>
-          Direction X component [default: 0]
-      --dir-y <DIR_Y>
-          Direction Y component [default: 0]
-  -p, --perturb <PERTURB>
-          Use perturbation angle for direction changes at bounce [default: true] [possible values: true, false]
-  -k, --perturb-segment <PERTURB_SEGMENT>
-          Use perturbation randomly while moving in a straight line [default: false] [possible values: true, false]
-      --perturb-segment-percent <PERTURB_SEGMENT_PERCENT>
-          Perturb segment percent chance per cell travelled [default: 0.5]
-  -b, --stop-bounces <STOP_BOUNCES>
-          Maximum number of bounces before ending simulation [default: 0]
-  -t, --stop-time <STOP_TIME>
-          Maximum simulated time when to stop in seconds [default: 0]
-  -c, --stop-coverage <STOP_COVERAGE>
-          Stop when we have reached this coverage percentage This is a soft limit, the simulation will still run until the specified bounces or time is reached if specified [default: 0]
-  -m, --stop-simsteps <STOP_SIMSTEPS>
-          Stop when we have reached the specified number of simulation steps [default: 0]
-  -d, --stop-distance <STOP_DISTANCE>
-          Stop when we have reached the specified distance covered [default: 0]
-      --verbosity <VERBOSITY>
-          Verbosity during simulation [default: 0]
-  -P, --parallel <PARALLEL>
-          Use parallel processing to speed up simulation [default: false] [possible values: true, false]
-  -S, --random-seed <RANDOM_SEED>
-          Random seed for the simulation to be able to reproduce results If not specified, a random seed will be generated [default: 0]
-      --image-width-mm <IMAGE_WIDTH_MM>
-          Image output width in mm (50-2000) [default: 210]
-      --image-height-mm <IMAGE_HEIGHT_MM>
-          Image output height in mm (50-2000) [default: 297]
-  -Z, --paper-size <PAPER-SIZE>
-          Paper size to use for the output image. Options: 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'Letter', 'Legal'. [default: a4] [possible values: a5, a4, a3, a2, a1, a0, letter, legal, tabloid, executive, custom]
-  -C, --track-center <TRACK_CENTER>
-          Add option to turn centerpoint tracking on or off [default: false] [possible values: true, false]
-  -R, --show-progress <SHOW_PROGRESS>
-          Show progress bar during simulation (default: true) [default: false] [possible values: true, false]
-  -T, --cutter-type <CUTTER-TYPE>
-          Cutter type to use for the simulation. Options: 'blade', 'circular'. [default: blade] [possible values: blade, circular]
-  -D, --dpi <DPI>
-          DPI setting for image output (default: 300) [default: 300]
-  -J, --json-output <JSON_OUTPUT>
-          Print results as a json object [default: false] [possible values: true, false]
-  -B, --battery-run-time <BATTERY_RUN_TIME>
-          Battery duration in minutes for the cutter [default: 0]
-  -A, --battery-charge-time <BATTERY_CHARGE_TIME>
-          Battery charging time in minutes for the cutter when it runs out [default: 120]
-  -M, --map-file-name <MAP-FILE>
-          Path to map file with obstacles
-  -G, --show-gridlines <SHOW_GRIDLINES>
-          Show or hide gridlines in the output image [default: false] [possible values: true, false]
-  -Q, --database-file <DATABASE-FILE>
-          Store simulation results and model parameters in SQLite database file
-  -q, --quiet <QUIET>
-          Quiet, no output at all [default: false] [possible values: true, false]
-  -f, --generate-frames <GENERATE_FRAMES>
-          Generate frames for an animation [default: false] [possible values: true, false]
-  -F, --frame-rate <FRAME_RATE>
-          Specify frame-rate for the animation [default: 10]
-      --frames-dir <FRAMES-DIR>
-          [default: frames_dir]
-  -a, --create-animation <CREATE_ANIMATION>
-          Generate an animation video from the frames [default: false] [possible values: true, false]
-      --animation-file-name <ANIMATION-FILE-NAME>
-          Animation file name [default: cutter_sim.mp4]
-      --hw-encoding <HW_ENCODING>
-          Use HW assisted encoding for the animation. This is only available on macOS and Linux [default: true] [possible values: true, false]
-      --delete-frames <DELETE_FRAMES>
-          Delete frames after animation has been created [default: false] [possible values: true, false]
-  -h, --help
-          Print help
-  -V, --version
-          Print version
+Simulation Result (Short)
+=========================
+Coverage                                
+  Coverage.Bounces                      : 32
+  Coverage.Distance                     : 225.6600000000081
+  Coverage.Percent                      : 50.0008
+Cutter                                  
+  Battery                               
+    Cutter.Battery.Charge count         : 0
+    Cutter.Battery.Charge left (%)      : 100.0
+  Cutter.Blade Length                   : 0.05
+  Cutter.Radius                         : 0.2
+  Cutter.Type                           : "blade"
+  Cutter.Velocity                       : 0.3
+Time                                    
+  Time.CPU                              : "00:00:00.264"
+  Time.Cutting                          : "00:12:32"
+  Time.Efficiency                       : 55.3
+  Time.Min.Cov.Time                     : "00:06:56"
 ```
+
+From the result we can see that it took 6min and 56s to cut 50% of the area. The `Time.Efficiency` is roughly 67%. The efficiency is calculated with respect to the theorethical minimal time it would take to cut the area. The reason we don't reach the optimal time is that the cutter will run over the same spot several times since by defualt we have a very basic cutting algorithm based entirely on randomness. 
+
+## 2. Basic usage wth generated path image
+
+If we change the first example in two ways:
+
+  1. We want to see how much coverage we get if we let the cutter run, say 500 m,  using the `-d` option
+  2. We want to see a picture of the simulation with the path of the cutter using the  `-o` option
+
+```txt
+$> gridcover -R true -d 500 -o test.png
+Coverage:  82.09% ( 205228/ 250000 cells covered), Distance: 500.00, Bounces:   84, Sim-Time: 00:27:46
+
+Simulation Result (Short)
+=========================
+Coverage                                
+  Coverage.Bounces                      : 84
+  Coverage.Distance                     : 500.0040000000185
+  Coverage.Percent                      : 82.0912
+Cutter                                  
+  Battery                               
+    Cutter.Battery.Charge count         : 0
+    Cutter.Battery.Charge left (%)      : 100.0
+  Cutter.Blade Length                   : 0.05
+  Cutter.Radius                         : 0.2
+  Cutter.Type                           : "blade"
+  Cutter.Velocity                       : 0.3
+Time                                    
+  Time.CPU                              : "00:00:00.472"
+  Time.Cutting                          : "00:27:46"
+  Time.Efficiency                       : 0.0
+  Time.Min.Cov.Time                     : "00:00:00"
+```
+
+**Note:** The efficiency is not calculated when the stopping condition is distance travelled as it is not applicable (as it is only possible to calculate a minimum time for coverage)
+
+## 3. Basic usage with simulated battery capacity limit 
+
+One way to increase the fidelity of the simulation is to add the realism that a battery with finite capacity is being used and that needs regular re-charging. This will add to the simulation time (i.e. the time it takes to cut lawn until the selected stop condition is met). There are two times that needs specifying
+
+  1. How long the battery lasts (in min) using the option `-B`
+  2. How long time it takes to charge the battery (in min) using the option `-A`
+
+
+In addition a small time (1-15min) is randomly added (automatically) to simulate the time it takes for the cutter to move back to the charging station.
+
+**Note:** We increased the stopping distance so we run out of battery to see the result of the battery charging.
+
+```txt
+$> gridcover -R true -d 2000 -B 90 -A 180 -o test.png
+Coverage:  98.57% ( 246435/ 250000 cells covered), Distance: 2000.00, Bounces:  320, Sim-Time: 04:58:13, Battery capacity left:  76.5%
+
+Simulation Result (Short)
+=========================
+Coverage                                
+  Coverage.Bounces                      : 320
+  Coverage.Distance                     : 2000.0039999930268
+  Coverage.Percent                      : 98.574
+Cutter                                  
+  Battery                               
+    Cutter.Battery.Charge count         : 1
+    Cutter.Battery.Charge left (%)      : 76.5437037037143
+  Cutter.Blade Length                   : 0.05
+  Cutter.Radius                         : 0.2
+  Cutter.Type                           : "blade"
+  Cutter.Velocity                       : 0.3
+Time                                    
+  Time.CPU                              : "00:00:02.488"
+  Time.Cutting                          : "04:58:13"
+  Time.Efficiency                       : 0.0
+  Time.Min.Cov.Time                     : "00:00:00"
+```
+
+## 4. Using obstacle map and animation video
+
+In this example we:
+  1. load a basic obstacle map and generate an animation video (using `-M`)
+  2. add a higher level of verbosity (using `--verbosity 1`) which means that the output will give more detailed information about the simulation.
+  3. add a smaller cell size (using `-s 0.01`)
+  4. add an animation video (using `-a true`)
+
+
+```txt
+$> gridcover -M assets/mapex01.yaml -s 0.01 -a true -R true -c 75 --verbosity 1
+Frame: 006761, Coverage:  75.00% ( 706408/ 941859 cells covered), Distance: 405.68, Bounces:   86, Sim-Time: 00:22:32
+Video created successfully: cutter_sim.mp4
+
+Simulation Result
+=================
+Coverage                                
+  Coverage.Bounces                      : 152
+  Coverage.Cells                        : 706403
+  Coverage.Max visited                  : 19
+  Coverage.Min visited                  : 1
+  Coverage.Percent                      : 75.00092901379081
+Cutter                                  
+  Battery                               
+    Cutter.Battery.Charge count         : 0
+    Cutter.Battery.Charge left (%)      : 100.0
+    Cutter.Battery.Charge time          : 120.0
+    Cutter.Battery.Run time             : 0.0
+  Cutter.Blade Length                   : 0.05
+  Cutter.Cells under                    : 1600.0
+  Cutter.Distance                       : 424.81799999921617
+  Cutter.Radius                         : 0.2
+  Cutter.Type                           : "blade"
+  Cutter.Velocity                       : 0.3
+Frames                                  
+  Frames.Animation                      : true
+  Frames.Animation file name            : "cutter_sim.mp4"
+  Frames.Delete frames                  : false
+  Frames.Directory                      : "frames_dir"
+  Frames.Enabled                        : true
+  Frames.HW Encoding                    : true
+  Frames.Rate (fps)                     : 5
+  Frames.Steps per frame                : 10
+Grid                                    
+  Grid.Cell side (units)                : 0.01
+  Grid.Height (units)                   : 10.0
+  Grid.Hor.Cells                        : 1000
+  Obstacles                             
+    Grid.Obstacles.NumCells             : 58141
+    Grid.Obstacles.Percent              : 5.8141
+  Grid.Total cells                      : 1000000
+  Grid.Vert.Cells                       : 1000
+  Grid.Width (units)                    : 10.0
+Output image                            
+  Output image.DPI                      : 300
+  Output image.File name                : ""
+  Paper size                            
+    Output image.Paper size.format      : "A4"
+    Output image.Paper size.height_mm   : 297.0
+    Output image.Paper size.width_mm    : 210.0
+  Pixels                                
+    Output image.Pixels.height          : 3508
+    Output image.Pixels.width           : 2480
+  Output image.Show gridlines           : false
+Start                                   
+  Start.Angle (degrees)                 : 244.31604360192992
+  Direction                             
+    Start.Direction.X                   : -0.43340675369924286
+    Start.Direction.Y                   : -0.9011984164699158
+  Position                              
+    Start.Position.X                    : 8.093621061635275
+    Start.Position.Y                    : 4.600970808726622
+Steps                                   
+  Steps.Length (units)                  : 0.006
+  Steps.Seconds/step                    : 0.02
+  Steps.Steps/cell                      : 0.6
+  Steps.Steps/second                    : 50
+  Steps.Total #                         : 70803
+Time                                    
+  Time.CPU time                         : "00:02:39.316"
+  Time.Cutting time                     : "00:23:36"
+  Time.Cutting time (seconds)           : 1416
+  Time.Efficiency                       : 41.52
+  Time.FFmpeg Encoding Duration         : "00:01:42.039"
+  Time.Min.Cov.Time                     : "00:09:48"
+  Time.Min.Cov.Time (seconds)           : 588
+```
+
+
+
+
+
+

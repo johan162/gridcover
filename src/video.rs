@@ -71,7 +71,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::err
                         model.frames_dir.as_str(),
                         e
                     ))))?;
-                } else if !model.quiet && model.verbosity > 0 {
+                } else if !model.quiet && model.verbosity > 1 {
                     println!(
                         "{}",
                         "Frames directory deleted successfully."
@@ -79,7 +79,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::err
                             .bold()
                     );
                 }
-            } else if !model.quiet && model.verbosity > 0 {
+            } else if !model.quiet && model.verbosity > 1 {
                 println!(
                     "{}",
                     "Frames are kept in the output directory."
@@ -93,7 +93,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::err
 }
 
 fn try_print_encoding_info(model: &SimModel, encoder: &'static str, animation_file_name: &String) {
-    if !model.quiet && model.verbosity > 0 {
+    if !model.quiet && model.verbosity > 1 {
         println!(
             "{}",
             format!("Creating video using H.265 encoding from frames using \"{encoder}\" encoder")
