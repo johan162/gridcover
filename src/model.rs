@@ -80,6 +80,7 @@ pub struct SimModel {
     pub animation_file_name: String,
     pub hw_encoding: bool,
     pub delete_frames: bool,
+    pub ffmpeg_encoding_duration: Option<Duration>,
 }
 
 // Define a constant for the simulation step size factor
@@ -194,6 +195,7 @@ impl SimModel {
             animation_file_name,
             hw_encoding,
             delete_frames,
+            ffmpeg_encoding_duration: None, 
         }
     }
 
@@ -395,7 +397,7 @@ impl SimModel {
                 "Time": {
                      "CPU time": format!("{:02}:{:02}:{:02}.{:03}",
                         self.cpu_time.num_hours(),
-                        self.cpu_time.num_minutes(),
+                        self.cpu_time.num_minutes() % 60,
                         self.cpu_time.num_seconds() % 60,
                         self.cpu_time.num_milliseconds() % 1000),
 
@@ -404,6 +406,11 @@ impl SimModel {
                     "Min.Cov.Time": format!("{:02}:{:02}:{:02}",
                         t_hours, t_minutes, t_seconds),
                     "Efficiency": format!("{efficiency:.2}").parse::<f64>().unwrap(),
+                    "FFmpeg Encoding Duration": self.ffmpeg_encoding_duration.map(|d| format!("{:02}:{:02}:{:02}.{:03}",
+                        d.num_hours(),
+                        d.num_minutes() % 60,
+                        d.num_seconds() % 60,
+                        d.num_milliseconds() % 1000)),
                 },
                 "Start": {
                     "Position": {
@@ -444,6 +451,8 @@ impl SimModel {
                     "Steps per frame": self.steps_per_frame,
                     "Animation": self.create_animation,
                     "Animation file name": self.animation_file_name,
+                    "HW Encoding": self.hw_encoding,
+                    "Delete frames": self.delete_frames,
                 },
                 "Output image": {
                     "Paper size": self.paper_size.get_json(),

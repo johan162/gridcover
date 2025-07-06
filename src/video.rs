@@ -1,4 +1,5 @@
 use crate::model::SimModel;
+use chrono::Duration;
 use colored::Colorize;
 use std::error::Error;
 use std::fs;
@@ -6,14 +7,17 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Error>> {
+pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
+    let mut duration: Duration = Duration::zero();
     if model.create_animation {
-        
         is_ffmpeg_installed()?;
         let encoder = get_encoder(model)?;
         let animation_file_name = get_animation_file_name(model)?;
 
         try_print_encoding_info(model, encoder, &animation_file_name);
+
+        // Determine the time to do ffmpeg encoding.
+        let start_time = std::time::Instant::now();
 
         // Build the ffmpeg command to create the video
         // Example1 (Linux): ffmpeg -framerate 10 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_nvenc        -pix_fmt yuv420p cutter_sim.mp4
@@ -35,6 +39,9 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
             ])
             .output();
 
+        // Time duration of the ffmpeg command
+        duration = chrono::Duration::from_std(start_time.elapsed()).unwrap();
+
         if video_cmd_output.is_err() || !video_cmd_output.as_ref().unwrap().status.success() {
             Err(Box::new(
                     std::io::Error::other(
@@ -54,7 +61,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                 );
             }
             if model.delete_frames {
-                // Delete te entire output directory
+                // Delete the entire output directory
                 if let Err(e) = fs::remove_dir_all(&model.frames_dir) {
                     Err(Box::new(std::io::Error::other(format!(
                         "{} '{}' : {}",
@@ -64,7 +71,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                         model.frames_dir.as_str(),
                         e
                     ))))?;
-                } else if !model.quiet {
+                } else if !model.quiet && model.verbosity > 0 {
                     println!(
                         "{}",
                         "Frames directory deleted successfully."
@@ -72,7 +79,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
                             .bold()
                     );
                 }
-            } else if !model.quiet {
+            } else if !model.quiet && model.verbosity > 0 {
                 println!(
                     "{}",
                     "Frames are kept in the output directory."
@@ -82,22 +89,18 @@ pub fn try_video_encoding(model: &SimModel) -> Result<(), Box<dyn std::error::Er
             }
         }
     }
-    Ok(())
+    Ok(duration)
 }
 
 fn try_print_encoding_info(model: &SimModel, encoder: &'static str, animation_file_name: &String) {
-    if !model.quiet {
+    if !model.quiet && model.verbosity > 0 {
         println!(
             "{}",
-            format!(
-                "Creating video using H.265 encoding from frames using \"{encoder}\" encoder"
-            )
-            .color(colored::Color::Green)
-            .bold()
+            format!("Creating video using H.265 encoding from frames using \"{encoder}\" encoder")
+                .color(colored::Color::Green)
+                .bold()
         );
-
-        if model.verbosity > 0 {
-            println!(
+        println!(
                 "{} {}",
                 "Running command:".color(colored::Color::Green).bold(),
                 format!(
@@ -110,7 +113,6 @@ fn try_print_encoding_info(model: &SimModel, encoder: &'static str, animation_fi
                 .color(colored::Color::Cyan)
                 .bold()
             );
-        }
         // Empty IO buffer to make sure the output is flushed immediately
         std::io::stdout().flush().unwrap();
     }
