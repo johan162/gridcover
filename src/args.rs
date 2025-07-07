@@ -338,6 +338,10 @@ pub struct Args {
     #[arg(long, default_value = "cutter_sim.mp4", value_name = "ANIMATION-FILE-NAME")]
     pub animation_file_name: String,
 
+    /// Animation speedup factor
+    #[arg(long, short = 'U', default_value_t = 1, value_name = "ANIMATION-SPEEDUP-FACTOR")]
+    pub animation_speedup_factor: u64,
+
     /// Use HW assisted encoding for the animation. This is only available on macOS and Linux
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     pub hw_encoding: bool,
@@ -398,6 +402,7 @@ impl Args {
             animation_file_name: if self.animation_file_name != "cutter_sim.mp4" { self.animation_file_name } else { other.animation_file_name },
             hw_encoding: if self.hw_encoding { self.hw_encoding } else { other.hw_encoding },
             delete_frames: if self.delete_frames { self.delete_frames } else { other.delete_frames },
+            animation_speedup_factor: if self.animation_speedup_factor != 1 { self.animation_speedup_factor } else { other.animation_speedup_factor },
         }
     }
 }

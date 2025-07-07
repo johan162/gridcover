@@ -31,6 +31,7 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
     let steps_per_cell = (model.cell_size / model.step_size).ceil() as usize;
     let steps_per_tenth_percent = (one_percent_cells * steps_per_cell / 10).min(1) as u64;
     let mut frame_counter: u64 = 0;
+    let mut frame_image_numbering = 0;
 
     // Run simulation until the first of the stopping conditions is met
     // - either the specified number of bounces is reached
@@ -199,12 +200,11 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
         }
 
         if model.generate_frames && model.sim_steps % model.steps_per_frame == 0 {
-            let frame_filename = format!(
-                "{}/frame_{:07}.png",
-                model.frames_dir,
-                frame_counter
-            );
-            try_save_image(model, Some(frame_filename));
+            if frame_counter % model.animation_speedup_factor == 0 {
+                let frame_filename = format!("{}/frame_{:07}.png", model.frames_dir, frame_image_numbering);
+                frame_image_numbering += 1;
+                try_save_image(model, Some(frame_filename));
+            }
             frame_counter += 1;
         }
     }

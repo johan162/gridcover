@@ -81,6 +81,7 @@ pub struct SimModel {
     pub hw_encoding: bool,
     pub delete_frames: bool,
     pub ffmpeg_encoding_duration: Option<Duration>,
+    pub animation_speedup_factor: u64,
 }
 
 // Define a constant for the simulation step size factor
@@ -132,6 +133,7 @@ impl SimModel {
         animation_file_name: String,
         hw_encoding: bool,
         delete_frames: bool,
+        animation_speedup_factor: u64,
     ) -> Self {
         Self {
             start_x,
@@ -195,7 +197,8 @@ impl SimModel {
             animation_file_name,
             hw_encoding,
             delete_frames,
-            ffmpeg_encoding_duration: None, 
+            ffmpeg_encoding_duration: None,
+            animation_speedup_factor,
         }
     }
 
@@ -242,6 +245,7 @@ impl SimModel {
             args.animation_file_name.clone(),
             args.hw_encoding,
             args.delete_frames,
+            args.animation_speedup_factor,
         )
     }
 
@@ -277,6 +281,7 @@ impl SimModel {
                     "Animation File Name": self.animation_file_name,
                     "HW Encoding": self.hw_encoding,
                     "Delete Frames": self.delete_frames,
+                    "Animation Speedup": self.animation_speedup_factor,
                 },
                 "Start": {
                     "Position": {
@@ -455,6 +460,7 @@ impl SimModel {
                     "Animation file name": self.animation_file_name,
                     "HW Encoding": self.hw_encoding,
                     "Delete frames": self.delete_frames,
+                    "Animation Speedup": self.animation_speedup_factor,
                 },
                 "Output image": {
                     "Paper size": self.paper_size.get_json(),
@@ -749,20 +755,27 @@ pub fn init_model(
             .into());
         }
 
+        // If the resulting step size for the given frame rate is too large, we need to keep the smaller step
+        // size and instead adjust the steps per frame.
+        // This is necessary because the step size must be smaller than the cell size to ensure each step covers every cell.
         if model.velocity / model.frame_rate as f64
             > model.cell_size * SIMULATION_STEP_SIZE_FRACTION_OF_CELL
         {
             // We need to generate a frame every n:th step to get as close as possible to the frame rate
-            // Will us the user or automatically determined step size as the base
-            model.steps_per_frame =
+            model.steps_per_frame *=
                 (model.velocity / model.frame_rate as f64 / model.step_size).ceil() as u64;
 
             // Give a warning that the step size is too large and we might not get the desired frame rate
-            if model.steps_per_frame > 1 {
+            let effective_frame_rate =
+                model.velocity / model.steps_per_frame as f64 / model.step_size;
+            if model.steps_per_frame > 1
+                && (effective_frame_rate - model.frame_rate as f64).abs() > 0.01
+            {
                 eprintln!("{}",
-                    format!("Warning: Simulation will generate frames every {} steps which gives an effective frame rate of {:.02} fps.",
-                        model.steps_per_frame,
-                        model.velocity / model.steps_per_frame as f64 / model.step_size ).color(colored::Color::Yellow).bold()
+                    format!("Warning: Set frame rate is {} fps but effective frame rate will be {:.02} fps with given step-size ({:.02}).",
+                        model.frame_rate,
+                        model.velocity / model.steps_per_frame as f64 / model.step_size,
+                        model.step_size).color(colored::Color::Yellow).bold()
                 );
             }
         } else {
@@ -808,7 +821,13 @@ pub fn setup_grid_size(model: &mut SimModel) -> Result<(), Box<dyn std::error::E
     model.grid_cells_x = (model.grid_width / model.cell_size).ceil() as usize;
     model.grid_cells_y = (model.grid_height / model.cell_size).ceil() as usize;
     if model.grid_cells_x * model.grid_cells_y > 100_000_000 {
-        return Err(format!("{}","Grid size is too large (>100,000,000).".color(colored::Color::Red).bold()).into());
+        return Err(format!(
+            "{}",
+            "Grid size is too large (>100,000,000)."
+                .color(colored::Color::Red)
+                .bold()
+        )
+        .into());
     }
     model.grid_width = model.grid_cells_x as f64 * model.cell_size;
     model.grid_height = model.grid_cells_y as f64 * model.cell_size;
@@ -821,9 +840,14 @@ pub fn setup_grid_size(model: &mut SimModel) -> Result<(), Box<dyn std::error::E
     }
 
     if model.step_size >= model.cell_size {
-        return Err(format!("{}",
-            format!("Step size {} must be smaller than square size {}",
-            model.step_size, model.cell_size).color(colored::Color::Red).bold()
+        return Err(format!(
+            "{}",
+            format!(
+                "Step size {} must be smaller than square size {}",
+                model.step_size, model.cell_size
+            )
+            .color(colored::Color::Red)
+            .bold()
         )
         .into());
     }
