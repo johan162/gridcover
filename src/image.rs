@@ -1,7 +1,9 @@
+use crate::color_theme::{ColorTheme, ColorThemeManager};
 use crate::model::SimModel;
 use crate::model::grid::Cell;
 use colored::Colorize;
 
+#[allow(clippy::collapsible_if)]
 pub fn try_save_image(model: &SimModel, override_filename: Option<String>) {
     if model.image_file_name.is_some() || override_filename.is_some() {
         if let Err(err) = save_grid_image(model, override_filename) {
@@ -19,6 +21,46 @@ fn save_grid_image(
     model: &crate::model::SimModel,
     override_filename: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Get the color theme
+    let theme_manager = ColorThemeManager::new();
+    let theme = theme_manager.get_theme(model.color_theme.as_deref().unwrap_or("default"));
+
+    save_grid_image_with_theme(model, override_filename, theme)
+}
+
+/// Create a PNG image of the coverage grid with colored squares using a specific theme
+fn save_grid_image_with_theme(
+    model: &crate::model::SimModel,
+    override_filename: Option<String>,
+    theme: &ColorTheme,
+) -> Result<(), Box<dyn std::error::Error>> {
+   
+    let img = create_grid_image_in_memory_with_theme(model, theme)?;
+    if let Some(filename) = override_filename {
+        img.save(filename)?;
+    } else {
+        img.save(model.image_file_name.as_ref().unwrap())?;
+    }
+
+    Ok(())
+}
+
+/// Create an in-memory RGB image of the coverage grid
+#[allow(dead_code)]
+pub fn create_grid_image_in_memory(
+    model: &SimModel,
+) -> Result<image::RgbImage, Box<dyn std::error::Error>> {
+    let theme_manager = ColorThemeManager::new();
+    let theme = theme_manager.get_theme(model.color_theme.as_deref().unwrap_or("default"));
+
+    create_grid_image_in_memory_with_theme(model, theme)
+}
+
+/// Create a PNG image of the coverage grid with colored squares using a specific theme
+fn create_grid_image_in_memory_with_theme(
+    model: &crate::model::SimModel,
+    theme: &ColorTheme,
+) -> Result<image::RgbImage, Box<dyn std::error::Error>> {
     // Convert mm to pixels using DPI (Dots Per Inch)
     let pixels_per_mm = model.dpi as f64 / 25.4;
 
@@ -61,38 +103,9 @@ fn save_grid_image(
     // Create a new RGB image buffer
     let mut img = image::RgbImage::new(img_width, img_height);
 
-    // Define colors used in grid
-    const GRID_BACKGROUND_COLOR: [u8; 3] = [150, 150, 150]; // Dark gray
-    const GRID_LINE_COLOR: [u8; 3] = [0, 0, 0]; // Lighter gray for grid lines
-    const OBSTACLE_COLOR: [u8; 3] = [150, 0, 0]; // Red (for obstacles)
-    const CENTER_COLOR: [u8; 3] = [0, 0, 0]; // Black (for center points)
-    const GREEN_SHADES: [[u8; 3]; 21] = [
-        [240, 255, 240], // Honeydew (very light green)
-        [220, 255, 220],
-        [200, 255, 200],
-        [180, 255, 180],
-        [160, 255, 160],
-        [140, 255, 140],
-        [120, 255, 120],
-        [100, 255, 100],
-        [80, 220, 80],
-        [60, 200, 60],
-        [40, 180, 40],
-        [30, 160, 30],
-        [20, 140, 20],
-        [15, 120, 15],
-        [10, 100, 10],
-        [8, 80, 8],
-        [6, 60, 6],
-        [4, 40, 4],
-        [2, 20, 2],
-        [0, 64, 0],
-        [0, 44, 0], // Pure dark green
-    ];
-
     // Fill the image with grid color first
     for pixel in img.pixels_mut() {
-        *pixel = image::Rgb(GRID_BACKGROUND_COLOR);
+        *pixel = image::Rgb(theme.grid_background_color);
     }
 
     // Draw colored cells for covered areas
@@ -107,13 +120,10 @@ fn save_grid_image(
             let cell = &model.grid.as_ref().unwrap().cells[x][y];
 
             let color = match cell {
-                Cell::Obstacle => Some(OBSTACLE_COLOR),
+                Cell::Obstacle => Some(theme.obstacle_color),
                 Cell::Empty => None,
-                Cell::Covered(info) => {
-                    let color_idx = info.times_visited.min(GREEN_SHADES.len() - 1);
-                    Some(GREEN_SHADES[color_idx])
-                }
-                Cell::CenterPoint(_) if model.track_center => Some(CENTER_COLOR),
+                Cell::Covered(info) => Some(theme.get_coverage_color(info.times_visited)),
+                Cell::CenterPoint(_) if model.track_center => Some(theme.center_color),
                 _ => None,
             };
 
@@ -134,7 +144,11 @@ fn save_grid_image(
         for x in 0..model.grid_width.round() as u32 {
             let x_pos = model.grid.as_ref().unwrap().coordinate_to_grid_x(x as f64);
             for y in 0..img_height {
-                img.put_pixel(x_pos as u32 * cell_size, y, image::Rgb(GRID_LINE_COLOR));
+                img.put_pixel(
+                    x_pos as u32 * cell_size,
+                    y,
+                    image::Rgb(theme.grid_line_color),
+                );
             }
         }
 
@@ -142,16 +156,31 @@ fn save_grid_image(
         for y in 0..model.grid_height.round() as u32 {
             let y_pos = model.grid.as_ref().unwrap().coordinate_to_grid_y(y as f64);
             for x in 0..img_width {
-                img.put_pixel(x, y_pos as u32 * cell_size, image::Rgb(GRID_LINE_COLOR));
+                img.put_pixel(
+                    x,
+                    y_pos as u32 * cell_size,
+                    image::Rgb(theme.grid_line_color),
+                );
             }
         }
     }
 
-    if let Some(filename) = override_filename {
-        img.save(filename)?;
-    } else {
-        img.save(model.image_file_name.as_ref().unwrap())?;
-    }
+    Ok(img)
+}
 
-    Ok(())
+/// Get available color theme names
+#[allow(dead_code)]
+pub fn get_available_themes() -> Vec<String> {
+    let theme_manager = ColorThemeManager::new();
+    theme_manager
+        .list_theme_names()
+        .into_iter()
+        .cloned()
+        .collect()
+}
+
+/// Create a color theme manager for external use
+#[allow(dead_code)]
+pub fn create_theme_manager() -> ColorThemeManager {
+    ColorThemeManager::new()
 }

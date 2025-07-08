@@ -200,7 +200,7 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
         }
 
         if model.generate_frames && model.sim_steps % model.steps_per_frame == 0 {
-            if frame_counter % model.animation_speedup_factor == 0 {
+            if frame_counter % model.animation_speedup == 0 {
                 let frame_filename = format!("{}/frame_{:07}.png", model.frames_dir, frame_image_numbering);
                 frame_image_numbering += 1;
                 try_save_image(model, Some(frame_filename));

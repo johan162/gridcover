@@ -112,7 +112,7 @@ pub struct Args {
 
     /// Size of each grid square
     #[arg(short = 's', long, default_value_t = -1.0)]
-    pub square_size: f64,
+    pub cell_size: f64,
 
     /// Starting X coordinate for the circle center 
     #[arg(short = 'x', long, default_value_t = -1.0)]
@@ -128,11 +128,11 @@ pub struct Args {
 
     /// Direction X component 
     #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
-    pub dir_x: f64,
+    pub start_dir_x: f64,
 
     /// Direction Y component 
     #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
-    pub dir_y: f64,
+    pub start_dir_y: f64,
 
     /// Use perturbation angle for direction changes at bounce 
     #[arg(long, short='p', default_value_t = true, action = clap::ArgAction::Set)]
@@ -340,15 +340,19 @@ pub struct Args {
 
     /// Animation speedup factor
     #[arg(long, short = 'U', default_value_t = 1, value_name = "ANIMATION-SPEEDUP-FACTOR")]
-    pub animation_speedup_factor: u64,
+    pub animation_speedup: u64,
 
     /// Use HW assisted encoding for the animation. This is only available on macOS and Linux
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     pub hw_encoding: bool,
 
     /// Delete frames after animation has been created
-    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     pub delete_frames: bool,
+
+    /// Color theme to use as an string, possible values: "default", "green30", "blue", "high_contrast", "pure_green", "gray_green"
+    #[arg(long, default_value = None, value_name = "COLOR-THEME")]
+    pub color_theme: Option<String>,
 }
 
 
@@ -364,12 +368,12 @@ impl Args {
             blade_len: if self.blade_len != 0.05 { self.blade_len } else { other.blade_len },
             grid_width: if self.grid_width > 0.0 { self.grid_width } else { other.grid_width },
             grid_height: if self.grid_height > 0.0 { self.grid_height } else { other.grid_height },
-            square_size: if self.square_size > 0.0 { self.square_size } else { other.square_size },
+            cell_size: if self.cell_size > 0.0 { self.cell_size } else { other.cell_size },
             start_x: if self.start_x > 0.0 { self.start_x } else { other.start_x },
             start_y: if self.start_y > 0.0 { self.start_y } else { other.start_y },
             velocity: if self.velocity != 0.3 { self.velocity } else { other.velocity },
-            dir_x: if self.dir_x != 0.0 { self.dir_x } else { other.dir_x },
-            dir_y: if self.dir_y != 0.0 { self.dir_y } else { other.dir_y },
+            start_dir_x: if self.start_dir_x != 0.0 { self.start_dir_x } else { other.start_dir_x },
+            start_dir_y: if self.start_dir_y != 0.0 { self.start_dir_y } else { other.start_dir_y },
             perturb: if !self.perturb { self.perturb } else { other.perturb },
             perturb_segment: if self.perturb_segment { self.perturb_segment } else { other.perturb_segment },
             perturb_segment_percent: if self.perturb_segment_percent != 0.5 { self.perturb_segment_percent } else { other.perturb_segment_percent },
@@ -402,7 +406,8 @@ impl Args {
             animation_file_name: if self.animation_file_name != "cutter_sim.mp4" { self.animation_file_name } else { other.animation_file_name },
             hw_encoding: if self.hw_encoding { self.hw_encoding } else { other.hw_encoding },
             delete_frames: if self.delete_frames { self.delete_frames } else { other.delete_frames },
-            animation_speedup_factor: if self.animation_speedup_factor != 1 { self.animation_speedup_factor } else { other.animation_speedup_factor },
+            animation_speedup: if self.animation_speedup != 1 { self.animation_speedup } else { other.animation_speedup },
+            color_theme: self.color_theme.or(other.color_theme),
         }
     }
 }

@@ -19,6 +19,9 @@ The completed simulation can be shown as a animated video with a user specified 
 - **SQLite Database support** Option to store simulation results in a SQLite DB
 - **HW Assisted animation encoding** Creation of animated video of simulation with support for HW encoding
 
+The model is physically accurate to a degree where it is meaningfull to use it as a base for statistical investigations that are quite hard with an analytical apppproach . Such as the question *"How does distance traveled correpond to area covered?"* or *"How does the first derivative of distance change with increasing coverage?"* (which can be used to illustrate the law of diminishing returns).
+
+###
 
 ## Installation
 
@@ -86,6 +89,7 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `-Z, --paper-size <PAPER-SIZE>`  Paper size for output image
 - `-D, --dpi <DPI>`  DPI setting for image output
 - `-G, --show-gridlines <True/False>`  Show or hide gridlines in output image
+- `--color-theme <COLOR-THEME>`  Color theme for output image, can be one of: 'default', 'green30', 'blue', 'orange_red', 'gray_green', 'pure_green'.
 
 ## Animation & Video
 - `-f, --generate-frames <True/False>`  Generate frames for an animation
@@ -95,6 +99,7 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `--animation-file-name <ANIMATION-FILE-NAME>`  Animation file name
 - `--hw-encoding <True/False>`  Use HW assisted encoding for animation (macOS/Linux)
 - `--delete-frames <True/False>`  Delete frames after animation has been created
+- `-U, --animation-speedup` Speedup factor for the animation video, this makes the real time go x-times faster
 
 ## Output Formatting & Reporting
 - `-J, --json-output <True/False>`  Print result of simulation as a JSON object
@@ -116,6 +121,54 @@ Below is a categorized list of all command line options for **gridcover** to hel
 ## Help & Version
 - `-h, --help`  Print help
 - `-V, --version`  Print version
+
+## Color Themes
+
+**gridcover** supports multiple color themes for visualizing the coverage results. Color themes define:
+- Grid background color
+- Obstacle color
+- Center point tracking color
+- Coverage intensity colors (gradient from light to dark based on visit frequency)
+
+### Available Themes
+
+- **default** - Green coverage gradient with gray background (21 shades)
+- **green30** - Extended green gradient . similar tomdefault but finer steps (30 shades)
+- **blue** - Blue coverage gradient for alternative visualization
+- **orange_red** - High contrast 10 color gradient 
+- **gray_green** - A more subtle green 30 color gradient
+- **pure_green** - A vivid green 30 color gradient
+
+### Using Color Themes
+
+Color themes are automatically applied when generating images or animations. The default theme is used unless specified otherwise as a command line argument `--color-theme`
+
+### Adding Custom Themes
+
+To add a new color theme, create a new `ColorTheme` struct and register it with the `ColorThemeManager`:
+
+```rust
+use crate::color_theme::{ColorTheme, ColorThemeManager};
+
+let custom_theme = ColorTheme {
+    name: "custom".to_string(),
+    grid_background_color: [255, 255, 255],  // White background
+    grid_line_color: [128, 128, 128],        // Gray lines
+    obstacle_color: [255, 0, 0],             // Red obstacles
+    center_color: [0, 0, 0],                 // Black center points
+    coverage_shades: vec![
+        [255, 255, 0],   // Yellow (light coverage)
+        [255, 128, 0],   // Orange
+        [255, 0, 0],     // Red (heavy coverage)
+        // Add more colors as needed...
+    ],
+};
+
+let mut theme_manager = ColorThemeManager::new();
+theme_manager.register_theme(custom_theme);
+```
+
+---
 
 # Examples
 
@@ -151,11 +204,9 @@ Cutter
 Time                                    
   Time.CPU                              : "00:00:00.264"
   Time.Cutting                          : "00:12:32"
-  Time.Efficiency                       : 55.3
-  Time.Min.Cov.Time                     : "00:06:56"
 ```
 
-From the result we can see that it took 6min and 56s to cut 50% of the area. The `Time.Efficiency` is roughly 67%. The efficiency is calculated with respect to the theorethical minimal time it would take to cut the area. The reason we don't reach the optimal time is that the cutter will run over the same spot several times since by defualt we have a very basic cutting algorithm based entirely on randomness. 
+From the result we can see that it took 6min and 56s to cut 50% of the area. 
 
 ## 2. Basic usage wth generated path image
 
@@ -185,8 +236,6 @@ Cutter
 Time                                    
   Time.CPU                              : "00:00:00.472"
   Time.Cutting                          : "00:27:46"
-  Time.Efficiency                       : 0.0
-  Time.Min.Cov.Time                     : "00:00:00"
 ```
 
 **Note:** The efficiency is not calculated when the stopping condition is distance travelled as it is not applicable (as it is only possible to calculate a minimum time for coverage)
@@ -224,8 +273,6 @@ Cutter
 Time                                    
   Time.CPU                              : "00:00:02.488"
   Time.Cutting                          : "04:58:13"
-  Time.Efficiency                       : 0.0
-  Time.Min.Cov.Time                     : "00:00:00"
 ```
 
 ## 4. Using obstacle map and animation video
@@ -317,7 +364,46 @@ Time
 ```
 
 
+## 4. Using obstacle map and speeding up the animation video
 
+By default the animation is a 1:1 with real time, meaning that if the cutting takes 2h then the
+video will be 2h. This is often not very practical and in addition the animations might get quite
+large. To make it both faster and smaller we can speed them up. For example, if the cutting takes 
+120min then if we speed up by a factor of 20 the video will be 120/20 = 6min long
 
+```txt
+$> gridcover -M assets/mapex01.yaml -S 96783 -s 0.01 -R true -c 98  -U 20 -a true
+Video created successfully: cutter_sim.mp4
 
+Simulation Result (Short)
+=========================
+Coverage                                
+  Coverage.Bounces                      : 638
+  Coverage.Distance                     : 2160.7320000083255
+  Coverage.Percent                      : 98.0001252841455
+Cutter                                  
+  Battery                               
+    Cutter.Battery.Charge count         : 0
+    Cutter.Battery.Charge left (%)      : 100.0
+  Cutter.Blade Length                   : 0.05
+  Cutter.Radius                         : 0.2
+  Cutter.Type                           : "blade"
+  Cutter.Velocity                       : 0.3
+Time                                    
+  Time.CPU                              : "00:01:00.547"
+  Time.Cutting                          : "02:00:02"
+```
 
+We can now check the length of the resulting simulation video
+
+```sh
+$> ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 cutter_sim.mp4
+360.200000
+```
+
+which tells is that it is roughly 360 s (or 6min) exactly what we wanted. Note: You can also find out the length with the slightly shorter command
+
+```sh
+ffmpeg -i cutter_sim_1.mp4 2>&1 | grep Duration
+  Duration: 00:06:00.20, start: 0.000000, bitrate: 2778 kb/s
+```

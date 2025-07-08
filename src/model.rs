@@ -1,7 +1,7 @@
 use std::fs;
 
 use crate::model::grid::Grid;
-use crate::{args, mapfile};
+use crate::{args, color_theme, mapfile};
 use chrono::Duration;
 use colored::Colorize;
 use rand::Rng;
@@ -55,6 +55,7 @@ pub struct SimModel {
     pub image_file_name: Option<String>,
     pub map_file_name: Option<String>,
     pub show_gridlines: bool,
+    pub color_theme: Option<String>,
     pub verbosity: usize,
     pub track_center: bool,
     pub show_progress: bool,
@@ -81,7 +82,7 @@ pub struct SimModel {
     pub hw_encoding: bool,
     pub delete_frames: bool,
     pub ffmpeg_encoding_duration: Option<Duration>,
-    pub animation_speedup_factor: u64,
+    pub animation_speedup: u64,
 }
 
 // Define a constant for the simulation step size factor
@@ -133,7 +134,8 @@ impl SimModel {
         animation_file_name: String,
         hw_encoding: bool,
         delete_frames: bool,
-        animation_speedup_factor: u64,
+        animation_speedup: u64,
+        color_theme: Option<String>,
     ) -> Self {
         Self {
             start_x,
@@ -171,6 +173,7 @@ impl SimModel {
             image_file_name,
             map_file_name,
             show_gridlines,
+            color_theme,
             verbosity,
             track_center,
             show_progress,
@@ -198,7 +201,7 @@ impl SimModel {
             hw_encoding,
             delete_frames,
             ffmpeg_encoding_duration: None,
-            animation_speedup_factor,
+            animation_speedup,
         }
     }
 
@@ -206,14 +209,14 @@ impl SimModel {
         Self::new(
             args.start_x,
             args.start_y,
-            args.dir_x,
-            args.dir_y,
+            args.start_dir_x,
+            args.start_dir_y,
             0.0,
             args.step_size,
             args.radius,
             args.grid_width,
             args.grid_height,
-            args.square_size,
+            args.cell_size,
             args.velocity,
             args.stop_coverage,
             args.stop_time,
@@ -245,7 +248,8 @@ impl SimModel {
             args.animation_file_name.clone(),
             args.hw_encoding,
             args.delete_frames,
-            args.animation_speedup_factor,
+            args.animation_speedup,
+            args.color_theme.clone(),
         )
     }
 
@@ -281,7 +285,7 @@ impl SimModel {
                     "Animation File Name": self.animation_file_name,
                     "HW Encoding": self.hw_encoding,
                     "Delete Frames": self.delete_frames,
-                    "Animation Speedup": self.animation_speedup_factor,
+                    "Animation Speedup": self.animation_speedup,
                 },
                 "Start": {
                     "Position": {
@@ -319,6 +323,7 @@ impl SimModel {
                     "DPI": self.dpi,
                     "Paper Size": self.paper_size.get_json(),
                     "Show Gridlines": self.show_gridlines,
+                    "Color Theme": self.color_theme.as_ref().unwrap_or(&"None".to_string()),
                 },
                 "Stop Conditions": {
                     "Bounces": self.stop_bounces,
@@ -460,7 +465,7 @@ impl SimModel {
                     "Animation file name": self.animation_file_name,
                     "HW Encoding": self.hw_encoding,
                     "Delete frames": self.delete_frames,
-                    "Animation Speedup": self.animation_speedup_factor,
+                    "Animation Speedup": self.animation_speedup,
                 },
                 "Output image": {
                     "Paper size": self.paper_size.get_json(),
@@ -474,7 +479,8 @@ impl SimModel {
                     "Pixels": {
                         "width": (self.image_width_mm as f64 * self.dpi as f64 / 25.4).round() as u32,
                         "height": (self.image_height_mm as f64 * self.dpi as f64 / 25.4).round() as u32,
-                    }
+                    },
+                    "Color Theme": self.color_theme.as_ref().unwrap_or(&"None".to_string()),
                 },
             }
         });
@@ -483,8 +489,8 @@ impl SimModel {
     }
 
     pub fn get_simulation_result_short_as_json(&self) -> serde_json::Value {
-        let (t_hours, t_minutes, t_seconds, efficiency) =
-            self.get_theorethical_minimum_cutting_time();
+        // let (t_hours, t_minutes, t_seconds, efficiency) =
+        //     self.get_theorethical_minimum_cutting_time();
 
         json!({
             "Simulation Result (Short)": {
@@ -503,9 +509,6 @@ impl SimModel {
                         self.sim_time_elapsed as u64 / 3600,
                         (self.sim_time_elapsed as u64 % 3600) / 60,
                         self.sim_time_elapsed as u64 % 60),
-                    "Min.Cov.Time": format!("{:02}:{:02}:{:02}",
-                        t_hours, t_minutes, t_seconds),
-                    "Efficiency": format!("{efficiency:.2}").parse::<f64>().unwrap(),
                 },
                 "Cutter": {
                     "Type": self.cutter_type.as_str(),
@@ -634,8 +637,8 @@ fn json_to_console(json: &serde_json::Value, root_key: &str, indent: usize) {
 }
 
 fn set_initial_direction(args: &args::Args, rng: &mut impl Rng) -> (f64, f64, f64) {
-    let mut current_dir_x = args.dir_x;
-    let mut current_dir_y = args.dir_y;
+    let mut current_dir_x = args.start_dir_x;
+    let mut current_dir_y = args.start_dir_y;
     let angle_deg: f64;
 
     // If both directions are zero randomize them in range -1 to 1
@@ -663,6 +666,19 @@ pub fn init_model(
 ) -> Result<SimModel, Box<dyn std::error::Error>> {
     // Initialize simulation configuration
     let mut model = SimModel::init(args);
+
+    // Check that any explicitly specified color theme actually exists
+    if let Some(ref theme) = model.color_theme {
+        let theme_manager = color_theme::ColorThemeManager::new();
+        if !theme_manager.is_valid_theme_name(theme) {
+            return Err(format!(
+                "Invalid color theme '{}'. Available themes: {}",
+                theme,
+                theme_manager.list_theme_names().iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+            )
+            .into());
+        }
+    }
 
     // Make sure one of the stopping conditions is set
     if args.stop_bounces == 0

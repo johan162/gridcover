@@ -1,5 +1,6 @@
 mod args;
 mod collision;
+mod color_theme;
 mod db;
 mod image;
 mod mapfile;

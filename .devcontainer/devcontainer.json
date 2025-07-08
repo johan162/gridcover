@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/rust
 {
-	"name": "Rust",
+	"name": "Rust-gridcover",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
 
@@ -31,13 +31,14 @@
                                 "vadimcn.vscode-lldb",
                                 "usernamehw.errorlens",
                                 "ms-vscode.makefile-tools",
-                                "mhutchie.git-graph",
+								"gxl.git-graph-3",
                                 "fill-labs.dependi",
 								"tamasfe.even-better-toml",
 								"gruntfuggly.todo-tree",
 								"redhat.vscode-yaml",
 								"github.copilot",
-								"github.copilot-chat"
+								"github.copilot-chat",
+								"bierner.markdown-mermaid",
                         ],
                         "settings": {
                                 "editor.formatOnSave": true,
