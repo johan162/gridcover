@@ -4,9 +4,10 @@
 ## It also includes commands for linting, formatting, and generating coverage reports.
 ## Comments or bugs to: Johan Persson <johan162@gmail.com>
 SHELL := /bin/bash
-APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d'\#' -f1)
+APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
 APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
-APP_VERSION_PKG := $(shell cargo pkgid | cut -d'\#' -f2)
+APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
 BUNDLE_ID_PKG := nu.aditus.oss.$(APP_NAME_PKG)
 INSTALL_LOCATION_PKG := /usr/local/bin
 TARGET_ARCH_INTEL_PKG := x86_64-apple-darwin
@@ -312,29 +313,17 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 		echo "Please install rpm-build package: sudo dnf install rpm-build"; \
 		exit 1; \
 	fi
-	@echo "Building release binary for $(APP_NAME_PKG) version $(APP_VERSION_PKG) for $(TARGET_ARCH_LINUX)..."
+	@echo "Building release binary for $(APP_NAME_PKG) version $(APP_VERSION_PKG_RPM) for $(TARGET_ARCH_LINUX)..."
 	@cargo build --release --target $(TARGET_ARCH_LINUX)
 	@echo "Creating RPM build directories..."
 	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64/usr/local/bin
+	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin
 	@echo "Copying binary to buildroot..."
-	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64/usr/local/bin/"
+	cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
 	@echo "Creating RPM spec file..."
-	@cat > $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec << 'EOF'
-Name: $(APP_NAME_PKG)
-Version: $(APP_VERSION_PKG)
-Release: 1
-Summary: Autonomous Lawn Mower (cutter) Simulation
-License: MIT OR Apache-2.0
-Group: Applications/Engineering
-BuildArch: x86_64
-Requires: glibc
-%description
-GridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.
-%files
-/usr/local/bin/$(APP_NAME_PKG)
-%attr(755, root, root) /usr/local/bin/$(APP_NAME_PKG)
-EOF
+	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n%%files\n/usr/local/bin/%s\n%%attr(755, root, root) /usr/local/bin/%s\n' \
+		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" "$(APP_NAME_PKG)" "$(APP_NAME_PKG)" \
+		> $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Building RPM package..."
 	@rpmbuild --define "_topdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild" \
 		--define "_builddir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILD" \
