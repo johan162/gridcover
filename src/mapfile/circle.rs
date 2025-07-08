@@ -1,5 +1,6 @@
 use crate::model::grid::Grid;
 
+#[allow(clippy::collapsible_if)]
 pub fn apply_circle_obstacle(
     grid: &mut Grid,
     center_x: f64,

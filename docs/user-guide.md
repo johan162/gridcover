@@ -132,78 +132,100 @@ obstacles:
     name: "Fence"
 ```
 
-## All Command Line Arguments Grouped
+# Command Line Options
 
-### Grid Configuration
-- `-W, --width <WIDTH>` - Grid width in units (default: 10)
-- `-H, --height <HEIGHT>` - Grid height in units (default: 10) 
-- `-s, --cell-size <CELLL_SIZE>` - Size of each cell in the grid, in units (default: 0.01)
-- `-M, --map-file-name` - Map file to specify obstacle
+Below is a categorized list of all command line options for **gridcover** to help to find and understand the available configuration parameters.
 
-### Cutter Configuration
-- `-r, --radius <RADIUS>` - Radius of the circular cutting blade in units (default: 0.3)
-- `-v, --velocity <VELOCITY>` - Movement velocity in units/second (default: 0.5)
-- `-x, --start-x <START_X>` - Starting X coordinate for mower center (default: 0, randomized)
-- `-y, --start-y <START_Y>` - Starting Y coordinate for mower center (default: 0, randomized)
-- `--dir-x <DIR_X>` - Direction X component (default: 0, randomized)
-- `--dir-y <DIR_Y>` - Direction Y component (default: 0, randomized)
-- `-T, --cutter-type <CUTTER-TYPE>` Cutter type to use for the simulation. Options: 'blade', 'circular'. [default: blade]
-- `--blade-len <BLADE_LEN>` - Length of knife blade in units (default: 0.05)
-- `-B, --battery-run-time <BATTERY_RUN_TIME>` Battery duration in minutes for the cutter [default: 0]
-- `-A, --battery-charge-time <BATTERY_CHARGE_TIME>` Battery charging time in minutes for the cutter when it runs out [default: 0]
+## Simulation Area & Grid
+- `-W, --grid-width <GRID_WIDTH>`  Width in units of the grid
+- `-H, --grid-height <GRID_HEIGHT>`  Height in units of the grid
+- `-s, --square-size <SQUARE_SIZE>`  Size of each grid square
+- `-M, --map-file-name <MAP-FILE>`  Path to map file with obstacles
 
-
-### Stopping Conditions
-At least one stopping condition must be specified:
-
-- `-b, --stop-bounces <BOUNCES>` - Stop after this many wall bounces (default: 0, disabled)
-- `-t, --stop-time <TIME>` - Stop after simulated time in seconds (default: 0, disabled)
-- `-c, --stop-coverage <COVERAGE>` - Stop when coverage percentage reached (1-99%) (default: 0, disabled)
-- `-m, --stop-simsteps <STEPS>` - Stop after this many simulation steps (default: 0, disabled)
-- `-d, --stop-distance <DISTANCE>` - Stop after mower travels this distance (default: 0, disabled)
-
-### Output Configuration
-- `-o [IMAGE-FILE-NAME]` - Output PNG image filename (default: coverage_grid.png)
-- `-Z, --paper-size <PAPER-SIZE>` - Paper size to use for the output image, (A0,A1,A2,A3,A4,A5,Letter,Legal) (default: a4)
-- `--image-width <WIDTH>` - Output image width in mm (50-500, default: A4)
-- `--image-height <HEIGHT>` - Output image height in mm (50-500, default: A4)
-- `--dpi <DPI>` - Output image DPI (default: 300)
-- `-G, --show-gridlines` - Add gridlines to the output file to easily see major steps. Marks every whole number of width, height with a gridline
-- `-C, --track-center <TRACK_CENTER>` Add option to turn centerpoint tracking on or off [default: true] [possible values: true, false]
-- `-J, --json-output <JSON_OUTPUT>` Print results as a json object [default: false] [possible values: true, false]
-- `-q, --quiet <TRUE/FALSE>` Quiet, no output.
-- `--verbosity <LEVEL>` - Verbosity level 0-2 (default: 0)
-  - 0: Default, only print a short summary of the results
-  - 1: Full result with all metrics
-  - 2: Full result with all model parameters
+## Cutter & Physics
+- `-r, --radius <RADIUS>`  Radius of the cutter plate
+- `-l, --blade-len <BLADE_LEN>`  Length of knife blade
+- `-T, --cutter-type <CUTTER-TYPE>`  Cutter type: 'blade', 'circular'
+- `-v, --velocity <VELOCITY>`  Movement velocity in units/second
+- `-x, --start-x <START_X>`  Starting X coordinate for the cutter, random if not specified
+- `-y, --start-y <START_Y>`  Starting Y coordinate for the cutter, random if not specified
+- `--dir-x <DIR_X>`  Start direction X component, random if not specified
+- `--dir-y <DIR_Y>`  Start direction Y component, random if not specified
+- `-p, --perturb <True/False>`  Use perturbation angle for direction changes at edge bound
+- `-k, --perturb-segment <True/False>`  Use perturbation randomly while moving in a straight line
+- `--perturb-segment-percent <PERTURB_SEGMENT_PERCENT>`  Perturb segment percent chance per cell travelled
+- `-C, --track-center <True/False>`  Turn visual centerpoint tracking on or off in the output image
 
 
-### Simulation Parameters
-- `-z, --step-size <STEP_SIZE>` - Simulation step size in units if not specified will be calculated from the square size (default: auto)
-- `-S, --random-seed <SEED>` - Random seed for reproducible results (default: auto)
-- `-p, --perturb <PERTURB>` - Enable random angle perturbation on bounces (default: true)
-- `-k, --perturb-segment <PERTURB_SEGMENT>` Use perturbation randomly while moving in a straight line [default: false] [possible values: true, false]
-- `--perturb-segment-percent <PERTURB_SEGMENT_PERCENT>` Perturb segment percent chance per cell travelled
-- `args-write-file-name [ARGS-FILE-NAME]` - Write program arguments file in TOML format
-- `-i, args-read-file-name [ARGS-FILE-NAME]` - Read program arguments from a TOML file, arguments also specified on the command line will override the file
+## Simulation Control & Stopping Conditions
+- `-z, --step-size <STEP_SIZE>`  Simulation step size in units, automatically determined if not specified
+- `-b, --stop-bounces <STOP_BOUNCES>`  Maximum number of bounces before ending simulation
+- `-t, --stop-time <STOP_TIME>`  Maximum simulated time when to stop (seconds)
+- `-c, --stop-coverage <STOP_COVERAGE>`  Stop when reaching this coverage percentage
+- `-m, --stop-simsteps <STOP_SIMSTEPS>`  Stop after specified number of simulation steps
+- `-d, --stop-distance <STOP_DISTANCE>`  Stop after specified distance covered
 
-### Frames and Animation generation
-- `-f, --generate-frames <TRUE/FALSE>`
-- `-F, frame-rate <FRAME-RATE>`
-- `--frames-dir <FRAME-DIR>`
-- `-a, --create-animation <TRUE/FALSE>`
-- `--animation-file-name <ANIMATION-FILE-NAME>`
-- `--hw-encoding <TRUE/FALSE>`
-- `--delete-frames <TRUE/FALSE>`
+## Battery & Charging
+- `-B, --battery-run-time <BATTERY_RUN_TIME>`  Battery duration in minutes
+- `-A, --battery-charge-time <BATTERY_CHARGE_TIME>`  Battery charging time in minutes
 
+## Output & Visualization
+- `-o <IMAGE-FILE-NAME>`  Output image file name
+- `--image-width-mm <IMAGE_WIDTH_MM>`  Image output width in mm
+- `--image-height-mm <IMAGE_HEIGHT_MM>`  Image output height in mm
+- `-Z, --paper-size <PAPER-SIZE>`  Paper size for output image
+- `-D, --dpi <DPI>`  DPI setting for image output
+- `-G, --show-gridlines <True/False>`  Show or hide gridlines in output image
+- `--color-theme <COLOR-THEME>`  Color theme for output image, can be one of: 'default', 'green30', 'blue', 'orange_red', 'gray_green', 'pure_green'.
 
-### Behavior Options
-- `-C, --track-center <TRACK_CENTER>` - Track mower center position in image (default: false)
-- `-R, --show-progress <5GRESS>` - Show progress bar during simulation (default: false)
-- `-o <IMAGE-FILE-NAME>` - Output image file name
+## Animation & Video
+- `-f, --generate-frames <True/False>`  Generate frames for an animation
+- `-F, --frame-rate <FRAME_RATE>`  Specify frame-rate for the animation
+- `--frames-dir <FRAMES-DIR>`  Directory for animation frames
+- `-a, --create-animation <True/False>`  Generate an animation video from the frames (implies `-f` if not set)
+- `--animation-file-name <ANIMATION-FILE-NAME>`  Animation file name
+- `--hw-encoding <True/False>`  Use HW assisted encoding for animation (macOS/Linux)
+- `--delete-frames <True/False>`  Delete frames after animation has been created
+- `-U, --animation-speedup` Speedup factor for the animation video, this makes the real time go x-times faster
 
-### Database 
-- `-Q, --database-file <DATABASE_FILE>` - Store the result and used model in a sqlite3 database
+## Output Formatting & Reporting
+- `-J, --json-output <True/False>`  Print result of simulation as a JSON object
+- `--verbosity <VERBOSITY>`  Verbosity during simulation, 0 (default), 1, 2
+- `-R, --show-progress <True/False>`  Show progress bar during simulation
+- `-q, --quiet <True/False>`  Quiet, no output at all
+
+## Randomness & Reproducibility
+- `-S, --random-seed <RANDOM_SEED>`  Random seed for reproducible results
+
+## Parallelization & Performance
+- `-P, --parallel <True/False>`  **Deprecated**. Use parallel processing to speed up simulation
+
+## Configuration Files & Database
+- `--args-write-file-name <ARGS-FILE-NAME>`  Write program arguments file in TOML format
+- `-i, --args-read-file-name <ARGS-FILE-NAME>`  Read program arguments from a TOML file
+- `-Q, --database-file <DATABASE-FILE>`  Store simulation results and model parameters in SQLite database file
+
+## Help & Version
+- `-h, --help`  Print help
+- `-V, --version`  Print version
+
+## Color Themes
+
+**gridcover** supports multiple color themes for visualizing the coverage results. Color themes define:
+- Grid background color
+- Obstacle color
+- Center point tracking color
+- Coverage intensity colors (gradient from light to dark based on visit frequency)
+
+### Available Themes
+
+- **default** - Green coverage gradient with gray background (21 shades)
+- **green30** - Extended green gradient . similar tomdefault but finer steps (30 shades)
+- **blue** - Blue coverage gradient for alternative visualization
+- **orange_red** - High contrast 10 color gradient 
+- **gray_green** - A more subtle green 30 color gradient
+- **pure_green** - A vivid green 30 color gradient
+
 
 ## Understanding the Output
 
@@ -377,7 +399,7 @@ Options:
           Width in units of the grid [default: 0]
   -H, --grid-height <GRID_HEIGHT>
           Height in units of the grid [default: 0]
-  -s, --square-size <SQUARE_SIZE>
+  -s, --cell-size <CELL_SIZE>
           Size of each grid square [default: -1]
   -x, --start-x <START_X>
           Starting X coordinate for the circle center [default: -1]
@@ -385,9 +407,9 @@ Options:
           Starting Y coordinate for the circle center [default: 0]
   -v, --velocity <VELOCITY>
           Movement velocity in units/second [default: 0.3]
-      --dir-x <DIR_X>
+      --start-dir-x <START_DIR_X>
           Direction X component [default: 0]
-      --dir-y <DIR_Y>
+      --start-dir-y <START_DIR_Y>
           Direction Y component [default: 0]
   -p, --perturb <PERTURB>
           Use perturbation angle for direction changes at bounce [default: true] [possible values: true, false]
@@ -442,19 +464,24 @@ Options:
   -f, --generate-frames <GENERATE_FRAMES>
           Generate frames for an animation [default: false] [possible values: true, false]
   -F, --frame-rate <FRAME_RATE>
-          Specify frame-rate for the animation [default: 10]
+          Specify frame-rate for the animation [default: 5]
       --frames-dir <FRAMES-DIR>
           [default: frames_dir]
   -a, --create-animation <CREATE_ANIMATION>
           Generate an animation video from the frames [default: false] [possible values: true, false]
       --animation-file-name <ANIMATION-FILE-NAME>
           Animation file name [default: cutter_sim.mp4]
+  -U, --animation-speedup <ANIMATION-SPEEDUP-FACTOR>
+          Animation speedup factor [default: 1]
       --hw-encoding <HW_ENCODING>
           Use HW assisted encoding for the animation. This is only available on macOS and Linux [default: true] [possible values: true, false]
       --delete-frames <DELETE_FRAMES>
-          Delete frames after animation has been created [default: false] [possible values: true, false]
+          Delete frames after animation has been created [default: true] [possible values: true, false]
+      --color-theme <COLOR-THEME>
+          Color theme to use as an string, possible values: "default", "green30", "blue", "high_contrast", "pure_green", "gray_green"
   -h, --help
           Print help
   -V, --version
           Print version
+
 ```

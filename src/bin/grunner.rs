@@ -70,6 +70,7 @@ fn insert_decimal(s: &str) -> Option<String> {
     Some(format!("{head}.{tail}"))
 }
 
+#[allow(clippy::collapsible_if)]
 fn main() {
     let args = Args::parse();
 

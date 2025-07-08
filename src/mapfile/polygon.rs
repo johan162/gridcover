@@ -1,6 +1,7 @@
 use crate::model::grid::Grid;
 
 /// Apply polygon obstacle using point-in-polygon algorithm
+#[allow(clippy::collapsible_if)]
 pub fn apply_polygon_obstacle(grid: &mut Grid, points: &[[f64; 2]]) {
     if points.len() < 3 {
         eprintln!("Polygon must have at least 3 points");
