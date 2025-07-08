@@ -12,13 +12,15 @@ INSTALL_LOCATION_PKG := /usr/local/bin
 TARGET_ARCH_INTEL_PKG := x86_64-apple-darwin
 TARGET_ARCH_ARM_PKG := aarch64-apple-darwin
 TARGET_ARCH_INTEL_WIN := x86_64-pc-windows-gnu
+TARGET_ARCH_LINUX := x86_64-unknown-linux-gnu
 OUTPUT_DIR_PKG := target/pkg
 OUTPUT_PKG_NAME_INTEL := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-intel.pkg
 OUTPUT_PKG_NAME_ARM := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-arm.pkg
 OUTPUT_PKG_NAME_INTEL_WIN := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip
+OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64.rpm
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
-.PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, bump, install-pkg, uninstall-pkg
+.PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
 .DEFAULT_GOAL := help
 
 help: ## Display this help message
@@ -30,6 +32,8 @@ all-bin: ## Build the project for all supported architectures and create install
 	@$(MAKE) pkg
 	@echo "Building Windows package..."
 	@$(MAKE) win-zip
+	@echo "Building Linux RPM package..."
+	@$(MAKE) rpm
 	@echo "All binaries and packages created successfully."
 	@echo ""
 
@@ -243,6 +247,7 @@ uninstall-pkg: ## Uninstall the package from the system
 	@sudo pkgutil --forget "$(BUNDLE_ID_PKG)"
 	@echo "Uninstallation complete."
 
+
 qinst: br ## Quick install: Build and install the package on the host architecture
 	@echo "Quick install: Building and installing $(APP_NAME_PKG)..."
 	sudo cp target/release/$(APP_NAME_PKG) $(INSTALL_LOCATION_PKG)
@@ -286,3 +291,62 @@ mac-uninstall: ## Uninstall the macOS package
 	@sudo pkgutil --forget "$(BUNDLE_ID_PKG)"
 	@echo "Uninstallation complete."
 
+
+b-linux: ## Build Linux (x86_64-unknown-linux-gnu) debug profile using cargo
+	cargo build --target $(TARGET_ARCH_LINUX)
+
+br-linux: ## Build Linux (x86_64-unknown-linux-gnu) release profile using cargo
+	cargo build --release --target $(TARGET_ARCH_LINUX)
+
+rpm: ## Create an RPM package for Fedora/RHEL Linux
+	@echo "--- Building Fedora/RHEL RPM Package ---"
+	@echo "Checking for Rust target $(TARGET_ARCH_LINUX)..."
+	@if ! rustup target list --installed | grep -q $(TARGET_ARCH_LINUX); then \
+		echo "Error: Rust target $(TARGET_ARCH_LINUX) not installed."; \
+		echo "Please run: rustup target add $(TARGET_ARCH_LINUX)"; \
+		exit 1; \
+	fi
+	@echo "Checking for rpmbuild command..."
+	@if ! command -v rpmbuild >/dev/null 2>&1; then \
+		echo "Error: rpmbuild command not found."; \
+		echo "Please install rpm-build package: sudo dnf install rpm-build"; \
+		exit 1; \
+	fi
+	@echo "Building release binary for $(APP_NAME_PKG) version $(APP_VERSION_PKG) for $(TARGET_ARCH_LINUX)..."
+	@cargo build --release --target $(TARGET_ARCH_LINUX)
+	@echo "Creating RPM build directories..."
+	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64/usr/local/bin
+	@echo "Copying binary to buildroot..."
+	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64/usr/local/bin/"
+	@echo "Creating RPM spec file..."
+	@cat > $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec << 'EOF'
+Name: $(APP_NAME_PKG)
+Version: $(APP_VERSION_PKG)
+Release: 1
+Summary: Autonomous Lawn Mower (cutter) Simulation
+License: MIT OR Apache-2.0
+Group: Applications/Engineering
+BuildArch: x86_64
+Requires: glibc
+%description
+GridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.
+%files
+/usr/local/bin/$(APP_NAME_PKG)
+%attr(755, root, root) /usr/local/bin/$(APP_NAME_PKG)
+EOF
+	@echo "Building RPM package..."
+	@rpmbuild --define "_topdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild" \
+		--define "_builddir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILD" \
+		--define "_buildrootdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT" \
+		-bb $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
+	@echo "Copying RPM to output directory..."
+	@cp $(OUTPUT_DIR_PKG)/rpmbuild/RPMS/x86_64/$(OUTPUT_RPM_NAME) $(OUTPUT_DIR_PKG)/
+	@echo "Cleaning up build directories..."
+	@rm -rf $(OUTPUT_DIR_PKG)/rpmbuild
+	@echo ""
+	@echo "------------------------------------"
+	@echo "RPM package created at: $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
+	@echo "Install with: sudo dnf install $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
+	@echo "Or: sudo rpm -ivh $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
+	@echo "------------------------------------"
