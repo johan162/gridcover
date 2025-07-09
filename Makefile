@@ -17,18 +17,20 @@ SHELL := /bin/bash
 RPM_USER := $(shell git config --get user.name)
 RPM_USER_EMAIL := $(shell git config --get user.email)
 
-## The bundle unique ID to use in Apple install package
-BUNDLE_ID_PKG := nu.aditus.oss.$(APP_NAME_PKG)
+## The release number for the RPM package, increment this for each new build
+RPM_RELEASE := "1"
 
-## ----------------------------------------------------------------------------
-## NO NEED TO CHANGE ANYTHING BELOW THIS LINE!
-## ----------------------------------------------------------------------------
 APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
 APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
-APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+
+## The bundle unique ID to use in Apple install package
+BUNDLE_ID_PKG := "nu.aditus.oss.$(APP_NAME_PKG)"
+
 ## As RPM does not allow dashes in the version number, we replace them with underscores.
 ## and as Cargo does not allow underscores in the version number we must keep two versions. Sigh.
+APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
 APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
+
 INSTALL_LOCATION_PKG := /usr/local/bin
 TARGET_ARCH_INTEL_PKG := x86_64-apple-darwin
 TARGET_ARCH_ARM_PKG := aarch64-apple-darwin
@@ -39,7 +41,7 @@ OUTPUT_DIR_PKG := target/pkg
 OUTPUT_PKG_NAME_INTEL := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-intel.pkg
 OUTPUT_PKG_NAME_ARM := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-arm.pkg
 OUTPUT_PKG_NAME_INTEL_WIN := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip
-OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64.rpm
+OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64.rpm
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
 .PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
@@ -63,7 +65,7 @@ installer: ## Build all Linux installers (no supported platforms detected)
 	@echo "Unsupported Linux distribution detected. Building RPM is only supported on Fedora Linux."
 endif
 else
-installer: ## Build all installers (no supported platforms detected)
+installer:
 	@echo "Unsupported platform detected. Installer can only be created on macOS, or Fedora Linux."
 endif
 
@@ -106,8 +108,8 @@ cov-html: ## Generate coverage report using llvm
 cov: ## Generate coverage summary to terminal using llvm
 	@cargo llvm-cov --summary-only --ignore-filename-regex='main.rs'
 
-tst-pkg-vars: ## Test the package creation process so that vars are set correctly
-	@echo "--- Testing Package Variables ---"
+debug-vars: ## Test the package creation process so that vars are set correctly
+	@echo "---------- Package Variables ----------"
 	@echo "RPM_USER: $(RPM_USER)"
 	@echo "RPM_USER_EMAIL: $(RPM_USER_EMAIL)"
 	@echo "APP_NAME_PKG: $(APP_NAME_PKG)"
@@ -126,7 +128,11 @@ tst-pkg-vars: ## Test the package creation process so that vars are set correctl
 	@echo "INSTALL_LOCATION_PKG: $(INSTALL_LOCATION_PKG)"
 	@echo ""
 
-pkg: pkg-intel pkg-arm ## Create a universal .pkg installer for both ARM and Intel Macs
+ifeq ($(shell uname),Linux)
+pkg: ## Create a universal .pkg installer for both ARM and Intel Macs
+	@echo "The 'pkg' target is only available on macOS."
+else
+pkg: pkg-intel pkg-arm
 	@echo "--- Creating Universal macOS Package ---"
 	@echo "Building ARM and Intel binaries..."
 	@cargo build --release --target $(TARGET_ARCH_INTEL_PKG)
@@ -152,6 +158,7 @@ pkg: pkg-intel pkg-arm ## Create a universal .pkg installer for both ARM and Int
 	@echo "------------------------------------"
 	@echo "Universal macOS package created at: $(OUTPUT_DIR_PKG)/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-universal.pkg"
 	@echo "------------------------------------"
+endif
 
 b-intel: ## Build Intel arch debug profile using cargo
 	cargo build --target $(TARGET_ARCH_INTEL_PKG)
@@ -159,7 +166,11 @@ b-intel: ## Build Intel arch debug profile using cargo
 br-intel: ## Build Intel arch release profile using cargo
 	cargo build --release --target $(TARGET_ARCH_INTEL_PKG)
 
+ifeq ($(shell uname),Linux)
 pkg-intel: ## Create a .pkg installer for Intel Macs (x86_64)
+	@echo "The 'pkg-intel' target is only available on macOS."
+else
+pkg-intel:
 	@echo "--- Creating Intel macOS Package ---"
 	@echo "Checking for Rust target $(TARGET_ARCH_INTEL_PKG)..."
 	@if ! rustup target list --installed | grep -q $(TARGET_ARCH_INTEL_PKG); then \
@@ -195,6 +206,7 @@ pkg-intel: ## Create a .pkg installer for Intel Macs (x86_64)
 	@echo "Bundle Identifier: $(BUNDLE_ID_PKG)"
 	@echo "Installation Location: $(INSTALL_LOCATION_PKG)"
 	@echo "------------------------------------"
+endif
 
 b-arm: ## Build ARM arch debug profile using cargo
 	cargo build --target $(TARGET_ARCH_ARM_PKG)
@@ -202,7 +214,11 @@ b-arm: ## Build ARM arch debug profile using cargo
 br-arm: ## Build ARM arch release profile using cargo
 	cargo build --release --target $(TARGET_ARCH_ARM_PKG)
 
+ifeq ($(shell uname),Linux)
 pkg-arm: ## Create a .pkg installer for ARM Macs (aarch64)
+	@echo "The 'pkg-arm' target is only available on macOS."
+else
+pkg-arm:
 	@echo "--- Creating ARM macOS Package ---"
 	@echo "Checking for Rust target $(TARGET_ARCH_ARM_PKG)..."
 	@if ! rustup target list --installed | grep -q $(TARGET_ARCH_ARM_PKG); then \
@@ -238,6 +254,7 @@ pkg-arm: ## Create a .pkg installer for ARM Macs (aarch64)
 	@echo "Bundle Identifier: $(BUNDLE_ID_PKG)"
 	@echo "Installation Location: $(INSTALL_LOCATION_PKG)"
 	@echo "------------------------------------"
+endif
 
 b-win: ## Build Windows (x86_64-pc-windows-gnu) debug profile using cargo
 	cargo build --target $(TARGET_ARCH_INTEL_WIN)
@@ -245,6 +262,10 @@ b-win: ## Build Windows (x86_64-pc-windows-gnu) debug profile using cargo
 br-win: ## Build Windows (x86_64-pc-windows-gnu) release profile using cargo
 	cargo build --release --target $(TARGET_ARCH_INTEL_WIN)
 
+ifeq ($(shell uname),Linux)
+win-zip: ## Create a Windows executable for x86_64-pc-windows-gnu
+	@echo "The 'win-zip' target is only available on macOS."
+else
 win-zip: ## Cross-compile release binary for Windows (x86_64-pc-windows-gnu) as a zip file
 	@echo "--- Building Windows ($(TARGET_ARCH_INTEL_WIN)) Release Binary ---"
 	@echo "Checking for Rust target $(TARGET_ARCH_INTEL_WIN)..."
@@ -266,6 +287,7 @@ win-zip: ## Cross-compile release binary for Windows (x86_64-pc-windows-gnu) as 
 	@echo "------------------------------------"
 	@echo "Intel Win package created at: $(OUTPUT_DIR_PKG)/$(OUTPUT_PKG_NAME_INTEL_WIN)"
 	@echo "------------------------------------"
+endif
 
 bump: ## Bump the version number in Cargo.toml
 	@echo "Current version is APP_VERSION_PKG: $(APP_VERSION_PKG)"
@@ -283,8 +305,6 @@ uninstall-pkg: ## Uninstall the package from the system
 	@echo "Uninstalling $(APP_NAME_PKG) version $(APP_VERSION_PKG)..."
 	@sudo pkgutil --forget "$(BUNDLE_ID_PKG)"
 	@echo "Uninstallation complete."
-
-
 
 qinst: br ## Quick install: Build and install the package on the host architecture
 	@echo "Quick install: Building and installing $(APP_NAME_PKG)..."
@@ -329,14 +349,17 @@ mac-uninstall: ## Uninstall the macOS package
 	@sudo pkgutil --forget "$(BUNDLE_ID_PKG)"
 	@echo "Uninstallation complete."
 
-
 b-linux: ## Build Linux (x86_64-unknown-linux-gnu) debug profile using cargo
 	cargo build --target $(TARGET_ARCH_LINUX)
 
 br-linux: ## Build Linux (x86_64-unknown-linux-gnu) release profile using cargo
 	cargo build --release --target $(TARGET_ARCH_LINUX)
 
+ifeq ($(shell uname),Darwin)
 rpm: ## Create an RPM package for Fedora/RHEL Linux
+	@echo "This target is only available on Fedora Linux. Use 'make b-linux' to build the linux binary."
+else
+rpm:
 	@echo "--- Building Fedora/RHEL RPM Package ---"
 	@echo "Checking for Rust target $(TARGET_ARCH_LINUX)..."
 	@if ! rustup target list --installed | grep -q $(TARGET_ARCH_LINUX); then \
@@ -358,8 +381,8 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 	@echo "Copying binary to buildroot..."
 	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
 	@echo "Creating RPM spec file..."
-	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- RPM package\n' \
-		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" \
+	@printf 'Name: %s\nVersion: %s\nRelease: %s\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- RPM package\n' \
+		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" "$(RPM_RELEASE)" \
 		"$(PWD)/target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(APP_NAME_PKG)" \
 		"$$(date +'%a %b %d %Y')" "$(RPM_USER)" "$(RPM_USER_EMAIL)" "$(APP_VERSION_PKG_RPM)" \
 		> $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
@@ -376,3 +399,4 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 	@echo "Install with: sudo dnf install $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
 	@echo "Or: sudo rpm -ivh $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
 	@echo "------------------------------------"
+endif
