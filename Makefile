@@ -20,15 +20,23 @@ RPM_USER_EMAIL := $(shell git config --get user.email)
 ## The release number for the RPM package, increment this for each new build
 RPM_RELEASE := "1"
 
+ifeq ($(shell uname),Linux)
 APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
-APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
+APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+else ifeq ($(shell uname),Darwin)
+APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '\#' -f1)
+APP_VERSION_PKG := $(shell cargo pkgid | cut -d '\#' -f2)
+else
+$(error "Unsupported platform detected. Makefile can only be used on macOS or Linux.")
+endif
+
 
 ## The bundle unique ID to use in Apple install package
 BUNDLE_ID_PKG := "nu.aditus.oss.$(APP_NAME_PKG)"
 
 ## As RPM does not allow dashes in the version number, we replace them with underscores.
 ## and as Cargo does not allow underscores in the version number we must keep two versions. Sigh.
-APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+
 APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
 
 INSTALL_LOCATION_PKG := /usr/local/bin
