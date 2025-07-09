@@ -42,21 +42,29 @@ OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64.rpm
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
 .PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := b ## Build debug version
 
 help: ## Display this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-all-bin: ## Build the project for all supported architectures and create installers
-	@echo "--- Building All Binaries and Packages ---"
-	@echo "Building macOS Intel & ARM package..."
-	@$(MAKE) pkg
-	@echo "Building Windows package..."
-	@$(MAKE) win-zip
-	@echo "Building Linux RPM package..."
-	@$(MAKE) rpm
-	@echo "All binaries and packages created successfully."
-	@echo ""
+## Build and create installers
+## Depending on what platform we run on we can only build a subset of the installers.
+## If we are on Apple OSX we can build macOS and Windows installers, and if we are
+## on fedora Linux we can build a RPM installer package.
+ifeq ($(shell uname),Darwin)
+installer: pkg win-zip 
+else ifeq ($(shell uname),Linux)
+## This is a mind f..k as grep will return exit status 0 on successful matching.
+ifneq ($(shell cat /etc/system-release | grep -i fedora),)
+installer: rpm 
+else
+installer: ## Build all Linux installers (no supported platforms detected)
+	@echo "Unsupported Linux distribution detected. Building RPM is only supported on Fedora Linux."
+endif
+else
+installer: ## Build all installers (no supported platforms detected)
+	@echo "Unsupported platform detected. Installer can only be created on macOS, or Fedora Linux."
+endif
 
 clean: ## Clean the project using cargo
 	cargo clean
@@ -99,14 +107,21 @@ cov: ## Generate coverage summary to terminal using llvm
 
 tst-pkg-vars: ## Test the package creation process so that vars are set correctly
 	@echo "--- Testing Package Variables ---"
+	@echo "RPM_USER: $(RPM_USER)"
+	@echo "RPM_USER_EMAIL: $(RPM_USER_EMAIL)"
 	@echo "APP_NAME_PKG: $(APP_NAME_PKG)"
 	@echo "APP_VERSION_PKG: $(APP_VERSION_PKG)"
+	@echo "APP_VERSION_PKG_RPM: $(APP_VERSION_PKG_RPM)"
 	@echo "BUNDLE_ID_PKG: $(BUNDLE_ID_PKG)"
 	@echo "TARGET_ARCH_INTEL_PKG: $(TARGET_ARCH_INTEL_PKG)"
+	@echo "TARGET_ARCH_INTEL_WIN: $(TARGET_ARCH_INTEL_WIN)"
 	@echo "TARGET_ARCH_ARM_PKG: $(TARGET_ARCH_ARM_PKG)"
+	@echo "TARGET_ARCH_LINUX: $(TARGET_ARCH_LINUX)"
 	@echo "OUTPUT_DIR_PKG: $(OUTPUT_DIR_PKG)"
 	@echo "OUTPUT_PKG_NAME_INTEL: $(OUTPUT_PKG_NAME_INTEL)"
 	@echo "OUTPUT_PKG_NAME_ARM: $(OUTPUT_PKG_NAME_ARM)"
+	@echo "OUTPUT_RPM_NAME: $(OUTPUT_RPM_NAME)"
+	@echo "OUTPUT_PKG_NAME_INTEL_WIN: $(OUTPUT_PKG_NAME_INTEL_WIN)"
 	@echo "INSTALL_LOCATION_PKG: $(INSTALL_LOCATION_PKG)"
 	@echo ""
 
