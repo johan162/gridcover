@@ -7,6 +7,8 @@ SHELL := /bin/bash
 APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
 APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
 APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+## As RPM does not allow dashes in the version number, we replace them with underscores.
+## and as Cargo does not allow underscores in the version number we must keep two versions. Sigh.
 APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
 BUNDLE_ID_PKG := nu.aditus.oss.$(APP_NAME_PKG)
 INSTALL_LOCATION_PKG := /usr/local/bin
@@ -18,7 +20,7 @@ OUTPUT_DIR_PKG := target/pkg
 OUTPUT_PKG_NAME_INTEL := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-intel.pkg
 OUTPUT_PKG_NAME_ARM := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-arm.pkg
 OUTPUT_PKG_NAME_INTEL_WIN := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip
-OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64.rpm
+OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64.rpm
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
 .PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
@@ -319,15 +321,15 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin
 	@echo "Copying binary to buildroot..."
-	cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
+	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
 	@echo "Creating RPM spec file..."
-	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n%%files\n/usr/local/bin/%s\n%%attr(755, root, root) /usr/local/bin/%s\n' \
-		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" "$(APP_NAME_PKG)" "$(APP_NAME_PKG)" \
+	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- Initial RPM package\n' \
+		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" \
+		"$(PWD)/target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(APP_NAME_PKG)" \
+		"$$(date +'%%a %%b %%d %%Y')" "$(USER)" "$(USER)@localhost.localdomain" "$(APP_VERSION_PKG_RPM)" \
 		> $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Building RPM package..."
 	@rpmbuild --define "_topdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild" \
-		--define "_builddir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILD" \
-		--define "_buildrootdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT" \
 		-bb $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Copying RPM to output directory..."
 	@cp $(OUTPUT_DIR_PKG)/rpmbuild/RPMS/x86_64/$(OUTPUT_RPM_NAME) $(OUTPUT_DIR_PKG)/
