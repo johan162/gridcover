@@ -1,41 +1,71 @@
 ## The cross compilation targets assume execution on macOS with the necessary tools installed.
 ## This Makefile is designed to work with Rust projects and provides commands for building, testing, packaging, and more.
-## It includes targets for creating macOS .pkg installers for both Intel and ARM architectures, as well as a Windows executable.
+## It includes targets for:
+## - creating macOS .pkg installers for both Intel and ARM architectures, 
+## - building zip-installers for Windows
+## - creating an RPM package for Fedora/RHEL Linux.
+## 
 ## It also includes commands for linting, formatting, and generating coverage reports.
 ## Comments or bugs to: Johan Persson <johan162@gmail.com>
 SHELL := /bin/bash
-APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d'\#' -f1)
-APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
-APP_VERSION_PKG := $(shell cargo pkgid | cut -d'\#' -f2)
+
+## ----------------------------------------------------------------------------
+## You should adjust RPM_USER, RPM_USER_EMAIL and BUNDLE_ID_PKG per your needs
+## ----------------------------------------------------------------------------
+
+## Name and email to use in RPM Spec file
+RPM_USER := $(shell git config --get user.name)
+RPM_USER_EMAIL := $(shell git config --get user.email)
+
+## The bundle unique ID to use in Apple install package
 BUNDLE_ID_PKG := nu.aditus.oss.$(APP_NAME_PKG)
+
+## ----------------------------------------------------------------------------
+## NO NEED TO CHANGE ANYTHING BELOW THIS LINE!
+## ----------------------------------------------------------------------------
+APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
+APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
+APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+## As RPM does not allow dashes in the version number, we replace them with underscores.
+## and as Cargo does not allow underscores in the version number we must keep two versions. Sigh.
+APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
 INSTALL_LOCATION_PKG := /usr/local/bin
 TARGET_ARCH_INTEL_PKG := x86_64-apple-darwin
 TARGET_ARCH_ARM_PKG := aarch64-apple-darwin
 TARGET_ARCH_INTEL_WIN := x86_64-pc-windows-gnu
 TARGET_ARCH_LINUX := x86_64-unknown-linux-gnu
+TARGET_ARCH_LINUX := x86_64-unknown-linux-gnu
 OUTPUT_DIR_PKG := target/pkg
 OUTPUT_PKG_NAME_INTEL := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-intel.pkg
 OUTPUT_PKG_NAME_ARM := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-arm.pkg
 OUTPUT_PKG_NAME_INTEL_WIN := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip
-OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64.rpm
+OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64.rpm
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
 .PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := b ## Build debug version
 
 help: ## Display this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-all-bin: ## Build the project for all supported architectures and create installers
-	@echo "--- Building All Binaries and Packages ---"
-	@echo "Building macOS Intel & ARM package..."
-	@$(MAKE) pkg
-	@echo "Building Windows package..."
-	@$(MAKE) win-zip
-	@echo "Building Linux RPM package..."
-	@$(MAKE) rpm
-	@echo "All binaries and packages created successfully."
-	@echo ""
+## Build and create installers
+## Depending on what platform we run on we can only build a subset of the installers.
+## If we are on Apple OSX we can build macOS and Windows installers, and if we are
+## on fedora Linux we can build a RPM installer package.
+ifeq ($(shell uname),Darwin)
+installer: pkg win-zip 
+else ifeq ($(shell uname),Linux)
+## This is a mind f..k as grep will return exit status 0 on successful matching.
+ifneq ($(shell cat /etc/system-release | grep -i fedora),)
+installer: rpm 
+else
+installer: ## Build all Linux installers (no supported platforms detected)
+	@echo "Unsupported Linux distribution detected. Building RPM is only supported on Fedora Linux."
+endif
+else
+installer: ## Build all installers (no supported platforms detected)
+	@echo "Unsupported platform detected. Installer can only be created on macOS, or Fedora Linux."
+endif
 
 clean: ## Clean the project using cargo
 	cargo clean
@@ -78,14 +108,21 @@ cov: ## Generate coverage summary to terminal using llvm
 
 tst-pkg-vars: ## Test the package creation process so that vars are set correctly
 	@echo "--- Testing Package Variables ---"
+	@echo "RPM_USER: $(RPM_USER)"
+	@echo "RPM_USER_EMAIL: $(RPM_USER_EMAIL)"
 	@echo "APP_NAME_PKG: $(APP_NAME_PKG)"
 	@echo "APP_VERSION_PKG: $(APP_VERSION_PKG)"
+	@echo "APP_VERSION_PKG_RPM: $(APP_VERSION_PKG_RPM)"
 	@echo "BUNDLE_ID_PKG: $(BUNDLE_ID_PKG)"
 	@echo "TARGET_ARCH_INTEL_PKG: $(TARGET_ARCH_INTEL_PKG)"
+	@echo "TARGET_ARCH_INTEL_WIN: $(TARGET_ARCH_INTEL_WIN)"
 	@echo "TARGET_ARCH_ARM_PKG: $(TARGET_ARCH_ARM_PKG)"
+	@echo "TARGET_ARCH_LINUX: $(TARGET_ARCH_LINUX)"
 	@echo "OUTPUT_DIR_PKG: $(OUTPUT_DIR_PKG)"
 	@echo "OUTPUT_PKG_NAME_INTEL: $(OUTPUT_PKG_NAME_INTEL)"
 	@echo "OUTPUT_PKG_NAME_ARM: $(OUTPUT_PKG_NAME_ARM)"
+	@echo "OUTPUT_RPM_NAME: $(OUTPUT_RPM_NAME)"
+	@echo "OUTPUT_PKG_NAME_INTEL_WIN: $(OUTPUT_PKG_NAME_INTEL_WIN)"
 	@echo "INSTALL_LOCATION_PKG: $(INSTALL_LOCATION_PKG)"
 	@echo ""
 
@@ -248,6 +285,7 @@ uninstall-pkg: ## Uninstall the package from the system
 	@echo "Uninstallation complete."
 
 
+
 qinst: br ## Quick install: Build and install the package on the host architecture
 	@echo "Quick install: Building and installing $(APP_NAME_PKG)..."
 	sudo cp target/release/$(APP_NAME_PKG) $(INSTALL_LOCATION_PKG)
@@ -312,38 +350,26 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 		echo "Please install rpm-build package: sudo dnf install rpm-build"; \
 		exit 1; \
 	fi
-	@echo "Building release binary for $(APP_NAME_PKG) version $(APP_VERSION_PKG) for $(TARGET_ARCH_LINUX)..."
+	@echo "Building release binary for $(APP_NAME_PKG) version $(APP_VERSION_PKG_RPM) for $(TARGET_ARCH_LINUX)..."
 	@cargo build --release --target $(TARGET_ARCH_LINUX)
 	@echo "Creating RPM build directories..."
 	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64/usr/local/bin
+	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin
 	@echo "Copying binary to buildroot..."
-	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG)-1.x86_64/usr/local/bin/"
+	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
 	@echo "Creating RPM spec file..."
-	@cat > $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec << 'EOF'
-Name: $(APP_NAME_PKG)
-Version: $(APP_VERSION_PKG)
-Release: 1
-Summary: Autonomous Lawn Mower (cutter) Simulation
-License: MIT OR Apache-2.0
-Group: Applications/Engineering
-BuildArch: x86_64
-Requires: glibc
-%description
-GridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.
-%files
-/usr/local/bin/$(APP_NAME_PKG)
-%attr(755, root, root) /usr/local/bin/$(APP_NAME_PKG)
-EOF
+	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- RPM package\n' \
+		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" \
+		"$(PWD)/target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(APP_NAME_PKG)" \
+		"$$(date +'%a %b %d %Y')" "$(RPM_USER)" "$(RPM_USER_EMAIL)" "$(APP_VERSION_PKG_RPM)" \
+		> $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Building RPM package..."
 	@rpmbuild --define "_topdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild" \
-		--define "_builddir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILD" \
-		--define "_buildrootdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT" \
 		-bb $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Copying RPM to output directory..."
 	@cp $(OUTPUT_DIR_PKG)/rpmbuild/RPMS/x86_64/$(OUTPUT_RPM_NAME) $(OUTPUT_DIR_PKG)/
 	@echo "Cleaning up build directories..."
-	@rm -rf $(OUTPUT_DIR_PKG)/rpmbuild
+	@rm	 -rf $(OUTPUT_DIR_PKG)/rpmbuild
 	@echo ""
 	@echo "------------------------------------"
 	@echo "RPM package created at: $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
