@@ -1,16 +1,34 @@
 ## The cross compilation targets assume execution on macOS with the necessary tools installed.
 ## This Makefile is designed to work with Rust projects and provides commands for building, testing, packaging, and more.
-## It includes targets for creating macOS .pkg installers for both Intel and ARM architectures, as well as a Windows executable.
+## It includes targets for:
+## - creating macOS .pkg installers for both Intel and ARM architectures, 
+## - building zip-installers for Windows
+## - creating an RPM package for Fedora/RHEL Linux.
+## 
 ## It also includes commands for linting, formatting, and generating coverage reports.
 ## Comments or bugs to: Johan Persson <johan162@gmail.com>
 SHELL := /bin/bash
+
+## ----------------------------------------------------------------------------
+## You should adjust RPM_USER, RPM_USER_EMAIL and BUNDLE_ID_PKG per your needs
+## ----------------------------------------------------------------------------
+
+## Name and email to use in RPM Spec file
+RPM_USER := $(shell git config --get user.name)
+RPM_USER_EMAIL := $(shell git config --get user.email)
+
+## The bundle unique ID to use in Apple install package
+BUNDLE_ID_PKG := nu.aditus.oss.$(APP_NAME_PKG)
+
+## ----------------------------------------------------------------------------
+## NO NEED TO CHANGE ANYTHING BELOW THIS LINE!
+## ----------------------------------------------------------------------------
 APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
 APP_NAME_PKG := $(shell basename $(APP_NAME_PKG_PATH))
 APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
 ## As RPM does not allow dashes in the version number, we replace them with underscores.
 ## and as Cargo does not allow underscores in the version number we must keep two versions. Sigh.
 APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
-BUNDLE_ID_PKG := nu.aditus.oss.$(APP_NAME_PKG)
 INSTALL_LOCATION_PKG := /usr/local/bin
 TARGET_ARCH_INTEL_PKG := x86_64-apple-darwin
 TARGET_ARCH_ARM_PKG := aarch64-apple-darwin
@@ -323,18 +341,18 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 	@echo "Copying binary to buildroot..."
 	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
 	@echo "Creating RPM spec file..."
-	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- Initial RPM package\n' \
+	@printf 'Name: %s\nVersion: %s\nRelease: 1\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- RPM package\n' \
 		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" \
 		"$(PWD)/target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(APP_NAME_PKG)" \
-		"$$(date +'%%a %%b %%d %%Y')" "$(USER)" "$(USER)@localhost.localdomain" "$(APP_VERSION_PKG_RPM)" \
+		"$$(date +'%a %b %d %Y')" "$(RPM_USER)" "$(RPM_USER_EMAIL)" "$(APP_VERSION_PKG_RPM)" \
 		> $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Building RPM package..."
 	@rpmbuild --define "_topdir $(PWD)/$(OUTPUT_DIR_PKG)/rpmbuild" \
 		-bb $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Copying RPM to output directory..."
 	@cp $(OUTPUT_DIR_PKG)/rpmbuild/RPMS/x86_64/$(OUTPUT_RPM_NAME) $(OUTPUT_DIR_PKG)/
-	@echo "Cleaning up build directories..."
-	@rm -rf $(OUTPUT_DIR_PKG)/rpmbuild
+## @echo "Cleaning up build directories..."
+## @rm	 -rf $(OUTPUT_DIR_PKG)/rpmbuild
 	@echo ""
 	@echo "------------------------------------"
 	@echo "RPM package created at: $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
