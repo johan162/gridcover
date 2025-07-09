@@ -351,8 +351,8 @@ rpm: ## Create an RPM package for Fedora/RHEL Linux
 		-bb $(OUTPUT_DIR_PKG)/rpmbuild/SPECS/$(APP_NAME_PKG).spec
 	@echo "Copying RPM to output directory..."
 	@cp $(OUTPUT_DIR_PKG)/rpmbuild/RPMS/x86_64/$(OUTPUT_RPM_NAME) $(OUTPUT_DIR_PKG)/
-## @echo "Cleaning up build directories..."
-## @rm	 -rf $(OUTPUT_DIR_PKG)/rpmbuild
+	@echo "Cleaning up build directories..."
+	@rm	 -rf $(OUTPUT_DIR_PKG)/rpmbuild
 	@echo ""
 	@echo "------------------------------------"
 	@echo "RPM package created at: $(OUTPUT_DIR_PKG)/$(OUTPUT_RPM_NAME)"
