@@ -7,7 +7,7 @@
 		"ghcr.io/devcontainers/features/rust:1": {}
 	},
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "dnf install -y rpm-build; dnf copr enable -y lihaohong/scc && dnf install -y scc",
+	"postCreateCommand": "dnf install -y rpm-build; dnf install -y rpmdevtools; dnf copr enable -y lihaohong/scc && dnf install -y scc",
 	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {

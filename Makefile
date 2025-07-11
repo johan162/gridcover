@@ -6,23 +6,37 @@
 ## - creating an RPM package for Fedora/RHEL Linux.
 ## 
 ## It also includes commands for linting, formatting, and generating coverage reports.
-## Comments or bugs to: Johan Persson <johan162@gmail.com>
 SHELL := /bin/bash
 
 ## ----------------------------------------------------------------------------
-## You should adjust RPM_USER, RPM_USER_EMAIL and BUNDLE_ID_PKG per your needs
+## You should adjust BUNDLE_ID per your needs
+## ----------------------------------------------------------------------------
+## The bundle unique ID to use in Apple install package
+BUNDLE_ID="nu.aditus.foss"
+
+
+## ----------------------------------------------------------------------------
+## NO NEED TO CHANGE ANYTHING BELOW THIS LINE!
 ## ----------------------------------------------------------------------------
 
 ## Name and email to use in RPM Spec file
 RPM_USER := $(shell git config --get user.name)
 RPM_USER_EMAIL := $(shell git config --get user.email)
 
-## The release number for the RPM package, increment this for each new build
-RPM_RELEASE := "1"
+## Check so that RPM command is available if we are running on Linux
+ifeq ($(shell uname),Linux)
+ifeq ($(shell command -v rpm),)
+$(error "RPM command not found. Please install RPM tools to build the RPM package.")
+else
+RPM_DIST=$(shell rpm --eval '%{?dist}')
+## The release number for the RPM package, increment this for each new build of the same version
+RPM_RELEASE := "1$(RPM_DIST)"
+endif
+endif
 
 ifeq ($(shell uname),Linux)
-APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '#' -f1)
-APP_VERSION_PKG := $(shell cargo pkgid | cut -d '#' -f2)
+APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d# -f1)
+APP_VERSION_PKG := $(shell cargo pkgid | cut -d# -f2)
 else ifeq ($(shell uname),Darwin)
 APP_NAME_PKG_PATH := $(shell cargo pkgid | cut -d '\#' -f1)
 APP_VERSION_PKG := $(shell cargo pkgid | cut -d '\#' -f2)
@@ -30,26 +44,25 @@ else
 $(error "Unsupported platform detected. Makefile can only be used on macOS or Linux.")
 endif
 
-
-## The bundle unique ID to use in Apple install package
-BUNDLE_ID_PKG := "nu.aditus.oss.$(APP_NAME_PKG)"
+## Unique ID for Apple OSX packages
+BUNDLE_ID_PKG := "$(BUNDLE_ID).$(APP_NAME_PKG)"
 
 ## As RPM does not allow dashes in the version number, we replace them with underscores.
 ## and as Cargo does not allow underscores in the version number we must keep two versions. Sigh.
-
 APP_VERSION_PKG_RPM := $(subst -,_,$(APP_VERSION_PKG))
 
-INSTALL_LOCATION_PKG := /usr/local/bin
-TARGET_ARCH_INTEL_PKG := x86_64-apple-darwin
-TARGET_ARCH_ARM_PKG := aarch64-apple-darwin
-TARGET_ARCH_INTEL_WIN := x86_64-pc-windows-gnu
-TARGET_ARCH_LINUX := x86_64-unknown-linux-gnu
-TARGET_ARCH_LINUX := x86_64-unknown-linux-gnu
-OUTPUT_DIR_PKG := target/pkg
-OUTPUT_PKG_NAME_INTEL := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-intel.pkg
-OUTPUT_PKG_NAME_ARM := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-arm.pkg
-OUTPUT_PKG_NAME_INTEL_WIN := $(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip
-OUTPUT_RPM_NAME := $(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64.rpm
+APP_NAME_PKG := "$(shell basename $(APP_NAME_PKG_PATH))"
+INSTALL_LOCATION_PKG := "/usr/local/bin"
+TARGET_ARCH_INTEL_PKG := "x86_64-apple-darwin"
+TARGET_ARCH_ARM_PKG := "aarch64-apple-darwin"
+TARGET_ARCH_INTEL_WIN := "x86_64-pc-windows-gnu"
+TARGET_ARCH_LINUX := "x86_64-unknown-linux-gnu"
+TARGET_ARCH_LINUX := "x86_64-unknown-linux-gnu"
+OUTPUT_DIR_PKG := "target/pkg"
+OUTPUT_PKG_NAME_INTEL := "$(APP_NAME_PKG)-$(APP_VERSION_PKG)-intel.pkg"
+OUTPUT_PKG_NAME_ARM := "$(APP_NAME_PKG)-$(APP_VERSION_PKG)-arm.pkg"
+OUTPUT_PKG_NAME_INTEL_WIN := "$(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip"
+OUTPUT_RPM_NAME := "$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64.rpm"
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
 .PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
@@ -117,23 +130,26 @@ cov: ## Generate coverage summary to terminal using llvm
 	@cargo llvm-cov --summary-only --ignore-filename-regex='main.rs'
 
 debug-vars: ## Test the package creation process so that vars are set correctly
+	@echo "---------------------------------------"
 	@echo "---------- Package Variables ----------"
-	@echo "RPM_USER: $(RPM_USER)"
-	@echo "RPM_USER_EMAIL: $(RPM_USER_EMAIL)"
-	@echo "APP_NAME_PKG: $(APP_NAME_PKG)"
-	@echo "APP_VERSION_PKG: $(APP_VERSION_PKG)"
-	@echo "APP_VERSION_PKG_RPM: $(APP_VERSION_PKG_RPM)"
-	@echo "BUNDLE_ID_PKG: $(BUNDLE_ID_PKG)"
-	@echo "TARGET_ARCH_INTEL_PKG: $(TARGET_ARCH_INTEL_PKG)"
-	@echo "TARGET_ARCH_INTEL_WIN: $(TARGET_ARCH_INTEL_WIN)"
-	@echo "TARGET_ARCH_ARM_PKG: $(TARGET_ARCH_ARM_PKG)"
-	@echo "TARGET_ARCH_LINUX: $(TARGET_ARCH_LINUX)"
-	@echo "OUTPUT_DIR_PKG: $(OUTPUT_DIR_PKG)"
-	@echo "OUTPUT_PKG_NAME_INTEL: $(OUTPUT_PKG_NAME_INTEL)"
-	@echo "OUTPUT_PKG_NAME_ARM: $(OUTPUT_PKG_NAME_ARM)"
-	@echo "OUTPUT_RPM_NAME: $(OUTPUT_RPM_NAME)"
-	@echo "OUTPUT_PKG_NAME_INTEL_WIN: $(OUTPUT_PKG_NAME_INTEL_WIN)"
-	@echo "INSTALL_LOCATION_PKG: $(INSTALL_LOCATION_PKG)"
+	@echo "---------------------------------------"
+	@echo "RPM_USER: '$(RPM_USER)'"
+	@echo "RPM_USER_EMAIL: '$(RPM_USER_EMAIL)'"
+	@echo "RPM_DIST: '$(RPM_DIST)'"
+	@echo "APP_NAME_PKG: '$(APP_NAME_PKG)'"
+	@echo "APP_VERSION_PKG: '$(APP_VERSION_PKG)'"
+	@echo "APP_VERSION_PKG_RPM: '$(APP_VERSION_PKG_RPM)'"
+	@echo "BUNDLE_ID_PKG: '$(BUNDLE_ID_PKG)'"
+	@echo "TARGET_ARCH_INTEL_PKG: '$(TARGET_ARCH_INTEL_PKG)'"
+	@echo "TARGET_ARCH_INTEL_WIN: '$(TARGET_ARCH_INTEL_WIN)'"
+	@echo "TARGET_ARCH_ARM_PKG: '$(TARGET_ARCH_ARM_PKG)'"
+	@echo "TARGET_ARCH_LINUX: '$(TARGET_ARCH_LINUX)'"
+	@echo "OUTPUT_DIR_PKG: '$(OUTPUT_DIR_PKG)'"
+	@echo "OUTPUT_PKG_NAME_INTEL: '$(OUTPUT_PKG_NAME_INTEL)'"
+	@echo "OUTPUT_PKG_NAME_ARM: '$(OUTPUT_PKG_NAME_ARM)'"
+	@echo "OUTPUT_RPM_NAME: '$(OUTPUT_RPM_NAME)'"
+	@echo "OUTPUT_PKG_NAME_INTEL_WIN: '$(OUTPUT_PKG_NAME_INTEL_WIN)'"
+	@echo "INSTALL_LOCATION_PKG: '$(INSTALL_LOCATION_PKG)'"
 	@echo ""
 
 ifeq ($(shell uname),Linux)
@@ -365,7 +381,13 @@ br-linux: ## Build Linux (x86_64-unknown-linux-gnu) release profile using cargo
 
 ifeq ($(shell uname),Darwin)
 rpm: ## Create an RPM package for Fedora/RHEL Linux
-	@echo "This target is only available on Fedora Linux. Use 'make b-linux' to build the linux binary."
+	@echo "The RPM target is only available on Linux. Use 'make b-linux' to cross-compile the linux binary on OSX."
+	@exit 1
+else ifeq ($(RPM_RELEASE),"")
+rpm:
+	@echo "RPM_RELEASE variable is not set. Cannot build RPM package."
+	@echo "This indicates that the RPM tool chain is not installed and configured correctly."
+	@exit 1
 else
 rpm:
 	@echo "--- Building Fedora/RHEL RPM Package ---"
@@ -385,9 +407,9 @@ rpm:
 	@cargo build --release --target $(TARGET_ARCH_LINUX)
 	@echo "Creating RPM build directories..."
 	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin
+	@mkdir -p $(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64/usr/local/bin
 	@echo "Copying binary to buildroot..."
-	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-1.x86_64/usr/local/bin/"
+	@cp "target/$(TARGET_ARCH_LINUX)/release/$(APP_NAME_PKG)" "$(OUTPUT_DIR_PKG)/rpmbuild/BUILDROOT/$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64/usr/local/bin/"
 	@echo "Creating RPM spec file..."
 	@printf 'Name: %s\nVersion: %s\nRelease: %s\nSummary: Autonomous Lawn Mower (cutter) Simulation\nLicense: MIT OR Apache-2.0\nGroup: Applications/Engineering\nBuildArch: x86_64\nRequires: glibc\n\n%%description\nGridCover is an autonomous lawn mower simulation tool that models coverage patterns and optimization strategies for robotic lawn mowers.\n\n%%install\nmkdir -p %%{buildroot}/usr/local/bin\ncp %s %%{buildroot}/usr/local/bin/\n\n%%files\n/usr/local/bin/%s\n\n%%changelog\n* %s %s <%s> - %s-1\n- RPM package\n' \
 		"$(APP_NAME_PKG)" "$(APP_VERSION_PKG_RPM)" "$(RPM_RELEASE)" \
