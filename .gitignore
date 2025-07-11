@@ -13,5 +13,6 @@ frames_dir
 *.rs.bk
 *.rs.bk.*
 *.rs.bk~
-
+.DS_Store
+.idea
 
