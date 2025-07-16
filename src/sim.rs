@@ -33,6 +33,13 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
     let mut frame_counter: u64 = 0;
     let mut frame_image_numbering = 0;
 
+    const ERROR_MSG: &str = "Failed to get grid. Internal BUG!";
+
+    if model.verbosity > 2 {
+        let cell_radius = (model.radius / model.cell_size).ceil() as i32;
+        println!("cell_radius: {cell_radius}");
+    }
+
     // Run simulation until the first of the stopping conditions is met
     // - either the specified number of bounces is reached
     // - or the specified simulation time is reached
@@ -61,7 +68,7 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
         cutter_center += current_dir * model.step_size;
 
         // Find and mark all grid cells that are fully covered by the circle at the current position
-        model.grid.as_mut().unwrap().mark_covered_cells(
+        model.grid.as_mut().expect(ERROR_MSG).mark_covered_cells(
             &cutter_center,
             model.radius,
             model.segment_number,
@@ -75,11 +82,11 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
 
         // Check if we are colliding with an obstacle
         if !collision_detected
-            && model.grid.as_ref().unwrap().has_obstacle_in_radius(
-                cutter_center.x,
-                cutter_center.y,
-                model.radius,
-            )
+            && model
+                .grid
+                .as_ref()
+                .expect(ERROR_MSG)
+                .collision_with_obstacle(cutter_center.x, cutter_center.y, model.radius)
         {
             current_dir.x = -current_dir.x; // Reverse x direction
             current_dir.y = -current_dir.y; // Reverse y direction
@@ -135,7 +142,7 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
 
         if model.sim_steps == 1 || model.sim_steps % steps_per_tenth_percent == 0 {
             (coverage_cell_count, current_coverage_percent) =
-                model.grid.as_ref().unwrap().get_coverage();
+                model.grid.as_ref().expect(ERROR_MSG).get_coverage();
 
             if model.show_progress {
                 if model.battery_run_time > 0.0 {
@@ -201,7 +208,10 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
 
         if model.generate_frames && model.sim_steps % model.steps_per_frame == 0 {
             if frame_counter % model.animation_speedup == 0 {
-                let frame_filename = format!("{}/frame_{:07}.png", model.frames_dir, frame_image_numbering);
+                let frame_filename = format!(
+                    "{}/frame_{:07}.png",
+                    model.frames_dir, frame_image_numbering
+                );
                 frame_image_numbering += 1;
                 try_save_image(model, Some(frame_filename));
             }

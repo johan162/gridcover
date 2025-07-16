@@ -95,7 +95,16 @@ pub struct Args {
     pub step_size: f64,
 
     /// Radius of the circle 
-    #[arg(short = 'r', long, default_value_t = 0.2)]
+    #[arg(short = 'r', long, default_value_t = 0.15,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid radius value".to_string())?;
+            if val > 0.0 && val <= 10.0 {
+                Ok(val)
+            } else {
+                Err(format!("Radius must be between 0.01 and 10.0, got {}", val))
+            }
+        })
+    )]
     pub radius: f64,
 
     /// Length of knife blade

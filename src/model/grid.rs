@@ -158,7 +158,7 @@ impl Grid {
 
     /// Check if there is an obstacle in a bounding box determined by the given radius around the given center point.
     #[allow(clippy::collapsible_if)]
-    pub fn has_obstacle_in_radius(&self, center_x: f64, center_y: f64, radius: f64) -> bool {
+    pub fn collision_with_obstacle(&self, center_x: f64, center_y: f64, radius: f64) -> bool {
         let grid_radius = (radius / self.cell_size).ceil() as i32;
         let grid_center_x = self.coordinate_to_grid_x(center_x) as i32;
         let grid_center_y = self.coordinate_to_grid_y(center_y) as i32;
@@ -292,7 +292,9 @@ impl Grid {
                     grid_cell_y as usize,
                     cutter_type,
                 ) {
-                    if let Some(cell) = self.get_cell_mut(grid_cell_x as usize, grid_cell_y as usize) {
+                    if let Some(cell) =
+                        self.get_cell_mut(grid_cell_x as usize, grid_cell_y as usize)
+                    {
                         match cell {
                             Cell::Empty => {
                                 cell.set_as_covered(segment_number);
