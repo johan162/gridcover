@@ -32,13 +32,14 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
     let steps_per_tenth_percent = (one_percent_cells * steps_per_cell / 10).min(1) as u64;
     let mut frame_counter: u64 = 0;
     let mut frame_image_numbering = 0;
+    let mut within_slippage = false;
+    let mut slippage_current_distance = 0.0;
+    let mut slippage_angle = 0.0;
+    let mut slippage_end_distance = 0.0;
+    let mut slippage_last_adjustment_distance = 0.0;
+    let mut last_slippage_activation_check = 0.0;
 
     const ERROR_MSG: &str = "Failed to get grid. Internal BUG!";
-
-    if model.verbosity > 2 {
-        let cell_radius = (model.radius / model.cell_size).ceil() as i32;
-        println!("cell_radius: {cell_radius}");
-    }
 
     // Run simulation until the first of the stopping conditions is met
     // - either the specified number of bounces is reached
@@ -66,6 +67,74 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
 
         // Calculate the next position of the circle center based on the current direction and step size
         cutter_center += current_dir * model.step_size;
+
+        // Simulate one side wheel slippage that will cause the cuttter to slightly alter its course
+        // This is a simple model of slippage, where we randomly change the direction slightly
+        // This is done to simulate a more realistic movement of the cutter
+        if model.wheel_slippage {
+            if within_slippage {
+                if model.distance_covered - slippage_last_adjustment_distance
+                    >= model.slippage_angle_adjustment_distance
+                {
+                    slippage_last_adjustment_distance = model.distance_covered;
+
+                    // The new angle is the current angle plus the slippage angle
+                    let new_angle = current_dir.y.atan2(current_dir.x) + slippage_angle;
+
+                    // Get the new direction vector based on the new angle
+                    current_dir.x = new_angle.cos();
+                    current_dir.y = new_angle.sin();
+
+                    if slippage_current_distance >= slippage_end_distance {
+                        if model.verbosity > 2 {
+                            println!(
+                                "\nSlippage ended at distance: {:.4}",
+                                model.distance_covered
+                            );
+                        }
+                        // Reset slippage state after the distance is covered
+                        within_slippage = false;
+                        slippage_current_distance = 0.0;
+                        last_slippage_activation_check = model.distance_covered;
+                    }
+                }
+                slippage_current_distance += model.step_size;
+            } else if model.distance_covered - last_slippage_activation_check
+                >= model.check_slippage_activation_distance
+            {
+                last_slippage_activation_check = model.distance_covered;
+                // If not within slippage range, we randomly decide to enter a slippage state
+                if rng.random_range(0.0..1.0) < model.slippage_probability {
+                    // Enter slippage state
+                    within_slippage = true;
+                    slippage_end_distance =
+                        rng.random_range(model.slippage_min_distance..=model.slippage_max_distance);
+                    // Slippage angle between 0.1 and 2.0 degrees
+                    slippage_angle = rng
+                        .random_range(model.slippage_angle_min..=model.slippage_angle_max)
+                        .to_radians();
+
+                    // Get the current angle of the direction vector
+                    let current_angle = current_dir.y.atan2(current_dir.x);
+
+                    // The new angle is the current angle plus the slippage angle
+                    let new_angle = current_angle + slippage_angle;
+
+                    // Get the new direction vector based on the new angle
+                    current_dir.x = new_angle.cos();
+                    current_dir.y = new_angle.sin();
+                    slippage_current_distance = 0.0;
+                    slippage_last_adjustment_distance = model.distance_covered;
+
+                    if model.verbosity > 2 {
+                        println!(
+                            "\nSlippage activated at dstance: {slippage_last_adjustment_distance:.4},  with angle: {:.4}, length: {slippage_end_distance:.4}",
+                            slippage_angle.to_degrees(),
+                        );
+                    }
+                }
+            }
+        }
 
         // Find and mark all grid cells that are fully covered by the circle at the current position
         model.grid.as_mut().expect(ERROR_MSG).mark_covered_cells(

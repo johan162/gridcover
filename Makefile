@@ -65,7 +65,7 @@ OUTPUT_PKG_NAME_INTEL_WIN := "$(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip"
 OUTPUT_RPM_NAME := "$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64.rpm"
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
-.PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg
+.PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg, check
 .DEFAULT_GOAL := b ## Build debug version
 
 help: ## Display this help message
@@ -109,6 +109,9 @@ br: ## Build host arch release profile using cargo
 
 test: ## Test the project on host arch using cargo
 	cargo test
+
+check: ## Check the project on host arch using cargo
+	cargo check
 
 r: ## Run the project on host arch using debug profile using cargo
 	cargo run

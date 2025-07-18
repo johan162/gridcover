@@ -362,6 +362,47 @@ pub struct Args {
     /// Color theme to use as an string, possible values: "default", "green30", "blue", "high_contrast", "pure_green", "gray_green"
     #[arg(long, default_value = None, value_name = "COLOR-THEME")]
     pub color_theme: Option<String>,
+
+    /// Add simulation of wheel slippage which will cause the cutter to not follow the path exactly
+    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    pub wheel_slippage: bool,
+
+    /// Slippage probability per slippage_activation_check_distance
+    #[arg(long, default_value_t = 0.10,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid slippage probability value".to_string())?;
+            if val >= 0.0 && val <= 1.0 {
+                Ok(val)
+            } else {
+                Err(format!("Slippage probability must be between 0.0 and 1.0, got {}", val))
+            }
+        })
+    )]
+    pub slippage_probability: f64,
+
+    /// Slippage activation min distance in units
+    #[arg(long, default_value_t = 1.0)]
+    pub slippage_min_distance: f64,
+
+    /// Slippage activation max distance in units
+    #[arg(long, default_value_t = 15.0)]
+    pub slippage_max_distance: f64,
+
+    /// Slippage min angle in degrees to adjust as slippage per defined steps
+    #[arg(long, default_value_t = -1.5)]
+    pub slippage_angle_min: f64,
+
+    /// Slippage max angle in degrees to adjust as slippage per defined steps
+    #[arg(long, default_value_t = 1.5)]
+    pub slippage_angle_max: f64,
+
+    /// Check if we should activate slippage every n:th units travelled
+    #[arg(long, default_value_t = 10.0)]
+    pub check_slippage_activation_distance: f64,
+
+    /// While in slippage mode adjust the angle every n:th units travelled
+    #[arg(long, default_value_t = 0.2)]
+    pub slippage_angle_adjustment_distance: f64,
 }
 
 
@@ -417,6 +458,14 @@ impl Args {
             delete_frames: if self.delete_frames { self.delete_frames } else { other.delete_frames },
             animation_speedup: if self.animation_speedup != 1 { self.animation_speedup } else { other.animation_speedup },
             color_theme: self.color_theme.or(other.color_theme),
+            wheel_slippage: if self.wheel_slippage { self.wheel_slippage } else { other.wheel_slippage },
+            slippage_probability: if self.slippage_probability != 0.01 { self.slippage_probability } else { other.slippage_probability },
+            slippage_min_distance: if self.slippage_min_distance != 1.0 { self.slippage_min_distance } else { other.slippage_min_distance },
+            slippage_max_distance: if self.slippage_max_distance != 15.0 { self.slippage_max_distance } else { other.slippage_max_distance },
+            slippage_angle_min: if self.slippage_angle_min != -1.5 { self.slippage_angle_min } else { other.slippage_angle_min },
+            slippage_angle_max: if self.slippage_angle_max != 1.5 { self.slippage_angle_max } else { other.slippage_angle_max },
+            check_slippage_activation_distance: if self.check_slippage_activation_distance != 10.0 { self.check_slippage_activation_distance } else { other.check_slippage_activation_distance },
+            slippage_angle_adjustment_distance: if self.slippage_angle_adjustment_distance != 0.2 { self.slippage_angle_adjustment_distance } else { other.slippage_angle_adjustment_distance },
         }
     }
 }

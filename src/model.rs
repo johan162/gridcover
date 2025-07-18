@@ -83,6 +83,14 @@ pub struct SimModel {
     pub delete_frames: bool,
     pub ffmpeg_encoding_duration: Option<Duration>,
     pub animation_speedup: u64,
+    pub wheel_slippage: bool,
+    pub slippage_probability: f64,
+    pub slippage_min_distance: f64,
+    pub slippage_max_distance: f64,
+    pub slippage_angle_min: f64,
+    pub slippage_angle_max: f64,
+    pub check_slippage_activation_distance: f64,
+    pub slippage_angle_adjustment_distance: f64,
 }
 
 // Define a constant for the simulation step size factor
@@ -136,6 +144,14 @@ impl SimModel {
         delete_frames: bool,
         animation_speedup: u64,
         color_theme: Option<String>,
+        wheel_slippage: bool,
+        slippage_probability: f64,
+        slippage_min_distance: f64,
+        slippage_max_distance: f64,
+        slippage_angle_min: f64,
+        slippage_angle_max: f64,
+        check_slippage_activation_distance: f64,
+        slippage_angle_adjustment_distance: f64,
     ) -> Self {
         Self {
             start_x,
@@ -202,6 +218,14 @@ impl SimModel {
             delete_frames,
             ffmpeg_encoding_duration: None,
             animation_speedup,
+            wheel_slippage,
+            slippage_probability,
+            slippage_min_distance,
+            slippage_max_distance,
+            slippage_angle_min,
+            slippage_angle_max,
+            check_slippage_activation_distance,
+            slippage_angle_adjustment_distance,
         }
     }
 
@@ -250,6 +274,14 @@ impl SimModel {
             args.delete_frames,
             args.animation_speedup,
             args.color_theme.clone(),
+            args.wheel_slippage,
+            args.slippage_probability,
+            args.slippage_min_distance,
+            args.slippage_max_distance,
+            args.slippage_angle_min,
+            args.slippage_angle_max,
+            args.check_slippage_activation_distance,
+            args.slippage_angle_adjustment_distance,
         )
     }
 
@@ -261,11 +293,22 @@ impl SimModel {
                     "Type": self.cutter_type.as_str(),
                     "Blade Length": self.blade_len,
                     "Radius": self.radius,
+                    "Radius in cells": (self.radius / self.cell_size).ceil() as usize,
                     "Battery": {
                         "Run Time": self.battery_run_time,
                         "Charge Time": self.battery_charge_time,
                     },
                     "Velocity": self.velocity,
+                },
+                "Slippage": {
+                    "Enabled": self.wheel_slippage,
+                    "Probability per activation": self.slippage_probability,
+                    "Activation distance": self.check_slippage_activation_distance,
+                    "Angle adjustment distance": self.slippage_angle_adjustment_distance,
+                    "Min Duration Distance": self.slippage_min_distance,
+                    "Max Duration Distance": self.slippage_max_distance,
+                    "Min Angle (deg)": self.slippage_angle_min,
+                    "Max Angle (deg)": self.slippage_angle_max,
                 },
                 "Simulation": {
                     "Verbosity": self.verbosity,
@@ -394,6 +437,7 @@ impl SimModel {
                     "Type": self.cutter_type.as_str(),
                     "Blade Length": self.blade_len,
                     "Radius": self.radius,
+                    "Radius in cells": (self.radius / self.cell_size).ceil() as usize,
                     "Velocity": self.velocity,
                     "Distance": self.distance_covered,
                     "Cells under": (2.0*self.radius/self.cell_size).floor() * (2.0*self.radius/self.cell_size).floor(),
@@ -402,7 +446,8 @@ impl SimModel {
                         "Charge time": self.battery_charge_time,
                         "Charge count": self.battery_charge_count,
                         "Charge left (%)": self.battery_charge_left,
-                    }
+                    },
+                    "Wheel Slippage": self.wheel_slippage,
                 },
                 "Time": {
                      "CPU time": format!("{:02}:{:02}:{:02}.{:03}",
@@ -674,7 +719,12 @@ pub fn init_model(
             return Err(format!(
                 "Invalid color theme '{}'. Available themes: {}",
                 theme,
-                theme_manager.list_theme_names().iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+                theme_manager
+                    .list_theme_names()
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             )
             .into());
         }
