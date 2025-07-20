@@ -69,6 +69,15 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `--perturb-segment-percent <PERTURB_SEGMENT_PERCENT>`  Perturb segment percent chance per cell travelled
 - `-C, --track-center <True/False>`  Turn visual centerpoint tracking on or off in the output image
 
+## Wheel slippage
+- `--wheel-slippage <True/False>` Enable wheel slippage
+- `--slippage-probability  <PROBABILITY>` Probability slippage may happen during an activation distance
+- `--slippage-min-distance` Minimums distance slippage will be enabled for
+- `--slippage_max_distance` Maximum distance slippage will be enabled for
+- `--slippage_angle_min` The minimum deviation angle 
+- `--slippage_angle_max` The maximum deviation angle 
+- `--check-slippage-activation-distance` Interval when we randomly check if there is a slippage 
+- `--slippage-angle-adjustment-distance` When slippage is enabled how frequently is the angle updated
 
 ## Simulation Control & Stopping Conditions
 - `-z, --step-size <STEP_SIZE>`  Simulation step size in units, automatically determined if not specified
