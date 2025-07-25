@@ -321,12 +321,12 @@ impl SimModel {
                         "Enabled": self.wheel_inbalance,
                         "Radius min": self.wheel_inbalance_radius_min,
                         "Radius max": self.wheel_inbalance_radius_max,
-                        "Radius used": self.wheel_inbalance_radius_used,
+                        "Radius": self.wheel_inbalance_radius_used,
                         "Adjustment step": self.wheel_inbalance_adjustment_step,
                     },
-                    "Slippage": {
+                    "Wheel Slippage": {
                         "Enabled": self.wheel_slippage,
-                        "Probability per activation": self.slippage_probability,
+                        "Probability": self.slippage_probability,
                         "Activation check distance": self.slippage_check_activation_distance,
                         "Adjustment step": self.slippage_adjustment_step,
                         "Min Duration Distance": self.slippage_min_distance,
@@ -466,13 +466,7 @@ impl SimModel {
                     "Velocity": self.velocity,
                     "Distance": self.distance_covered,
                     "Cells under": (2.0*self.radius/self.cell_size).floor() * (2.0*self.radius/self.cell_size).floor(),
-                    "Wheel Inbalance": {
-                        "Enabled": self.wheel_inbalance,
-                        "Radius min": self.wheel_inbalance_radius_min,
-                        "Radius max": self.wheel_inbalance_radius_max,
-                        "Radius used in sim": self.wheel_inbalance_radius_used,
-                        "Adjustment step": self.wheel_inbalance_adjustment_step,
-                    },
+                    "Wheel Inbalance": self.wheel_inbalance,
                     "Battery": {
                         "Run time": self.battery_run_time,
                         "Charge time": self.battery_charge_time,
@@ -669,7 +663,7 @@ impl SimModel {
 }
 
 fn json_to_console(json: &serde_json::Value, root_key: &str, indent: usize) {
-    let column1 = 40;
+    let column1 = 45;
     let column2 = column1 - indent;
     let column3 = column2 - indent;
     for (key, value) in json[root_key].as_object().unwrap_or_else(|| {
