@@ -368,7 +368,7 @@ pub struct Args {
     pub wheel_slippage: bool,
 
     /// Slippage probability per slippage_activation_check_distance
-    #[arg(long, default_value_t = 0.10,
+    #[arg(long, default_value_t = 0.03,
         value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
             let val: f64 = s.parse().map_err(|_| "Not a valid slippage probability value".to_string())?;
             if val >= 0.0 && val <= 1.0 {
@@ -381,28 +381,98 @@ pub struct Args {
     pub slippage_probability: f64,
 
     /// Slippage activation min distance in units
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(long, default_value_t = 20.0)]
     pub slippage_min_distance: f64,
 
     /// Slippage activation max distance in units
-    #[arg(long, default_value_t = 15.0)]
+    #[arg(long, default_value_t = 100.0)]
     pub slippage_max_distance: f64,
 
     /// Slippage min angle in degrees to adjust as slippage per defined steps
-    #[arg(long, default_value_t = -1.5)]
-    pub slippage_angle_min: f64,
+    #[arg(long, default_value_t = 5.0,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid slippage radius min value".to_string())?;
+            if val >= 1.0 && val <= 40.0 {
+                Ok(val)
+            } else {
+                Err(format!("Slippage radius min must be between 1.0 and 40.0, got {}", val))
+            }
+        })
+    )]
+    pub slippage_radius_min: f64,
 
     /// Slippage max angle in degrees to adjust as slippage per defined steps
-    #[arg(long, default_value_t = 1.5)]
-    pub slippage_angle_max: f64,
+    #[arg(long, default_value_t = 20.0,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid slippage radius max value".to_string())?;
+            if val >= 1.0 && val <= 50.0 {
+                Ok(val)
+            } else {
+                Err(format!("Slippage radius max must be between 5.0 and 50.0, got {}", val))
+            }
+        })
+    )]
+    pub slippage_radius_max: f64,
 
-    /// Check if we should activate slippage every n:th units travelled
-    #[arg(long, default_value_t = 10.0)]
-    pub check_slippage_activation_distance: f64,
+    /// Check if we should activate slippage every this units travelled
+    #[arg(long, default_value_t = 20.0)]
+    pub slippage_check_activation_distance: f64,
 
     /// While in slippage mode adjust the angle every n:th units travelled
-    #[arg(long, default_value_t = 0.2)]
-    pub slippage_angle_adjustment_distance: f64,
+    #[arg(long, default_value_t = 0.2,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid slippage adjustment step value".to_string())?;
+            if val >= 0.1 && val <= 10.0 {
+                Ok(val)
+            } else {
+                Err(format!("Slippage adjustment step must be between 0.1 and 10.0, got {}", val))
+            }
+        })
+    )]
+    pub slippage_adjustment_step: f64,
+
+    /// Wheel inbalance simulation, this will cause the cutter to not follow the straight path exactly
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    pub wheel_inbalance: bool,
+
+    /// We model wheel inbalance as the cutter turning in a random radius between a min/max value
+    #[arg(long, default_value_t = 40.0,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid wheel inbalance radius min value".to_string())?;
+            if val >= 1.0 && val <= 1000.0 {
+                Ok(val)
+            } else {
+                Err(format!("Wheel inbalance radius min must be between 1.0 and 1000.0, got {}", val))
+            }
+        })
+    )]
+    pub wheel_inbalance_radius_min: f64,
+
+    /// We model wheel inbalance as the cutter turning in a random radius between a min/max value
+    #[arg(long, default_value_t = 150.0,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid wheel inbalance radius max value".to_string())?;
+            if val >= 1.0 && val <= 1000.0 {
+                Ok(val)
+            } else {
+                Err(format!("Wheel inbalance radius max must be between 1.0 and 1000.0, got {}", val))
+            }
+        })
+    )]
+    pub wheel_inbalance_radius_max: f64,     
+
+    /// Wheel inbalance adjustment distance in units
+    #[arg(long, default_value_t = 0.2,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid wheel inbalance adjustment distance value".to_string())?;
+            if val >= 0.1 && val <= 10.0 {
+                Ok(val)
+            } else {
+                Err(format!("Wheel inbalance adjustment distance must be between 0.1 and 10.0, got {}", val))
+            }
+        })
+    )]
+    pub wheel_inbalance_adjustment_step: f64,
 }
 
 
@@ -414,7 +484,7 @@ impl Args {
             args_write_file_name: self.args_write_file_name.or(other.args_write_file_name),
             args_read_file_name: self.args_read_file_name.or(other.args_read_file_name),
             step_size: if self.step_size != 0.0 { self.step_size } else { other.step_size },
-            radius: if self.radius != 0.2 { self.radius } else { other.radius },
+            radius: if self.radius != 0.15 { self.radius } else { other.radius },
             blade_len: if self.blade_len != 0.05 { self.blade_len } else { other.blade_len },
             grid_width: if self.grid_width > 0.0 { self.grid_width } else { other.grid_width },
             grid_height: if self.grid_height > 0.0 { self.grid_height } else { other.grid_height },
@@ -450,7 +520,7 @@ impl Args {
             database_file: self.database_file.or(other.database_file),
             quiet: if self.quiet { self.quiet } else { other.quiet },
             generate_frames: if self.generate_frames { self.generate_frames } else { other.generate_frames },
-            frame_rate: if self.frame_rate != 10 { self.frame_rate } else { other.frame_rate },
+            frame_rate: if self.frame_rate != 5 { self.frame_rate } else { other.frame_rate },
             frames_dir: if self.frames_dir != "frames_dir" { self.frames_dir } else { other.frames_dir },
             create_animation: if self.create_animation { self.create_animation } else { other.create_animation },
             animation_file_name: if self.animation_file_name != "cutter_sim.mp4" { self.animation_file_name } else { other.animation_file_name },
@@ -459,13 +529,17 @@ impl Args {
             animation_speedup: if self.animation_speedup != 1 { self.animation_speedup } else { other.animation_speedup },
             color_theme: self.color_theme.or(other.color_theme),
             wheel_slippage: if self.wheel_slippage { self.wheel_slippage } else { other.wheel_slippage },
-            slippage_probability: if self.slippage_probability != 0.01 { self.slippage_probability } else { other.slippage_probability },
-            slippage_min_distance: if self.slippage_min_distance != 1.0 { self.slippage_min_distance } else { other.slippage_min_distance },
-            slippage_max_distance: if self.slippage_max_distance != 15.0 { self.slippage_max_distance } else { other.slippage_max_distance },
-            slippage_angle_min: if self.slippage_angle_min != -1.5 { self.slippage_angle_min } else { other.slippage_angle_min },
-            slippage_angle_max: if self.slippage_angle_max != 1.5 { self.slippage_angle_max } else { other.slippage_angle_max },
-            check_slippage_activation_distance: if self.check_slippage_activation_distance != 10.0 { self.check_slippage_activation_distance } else { other.check_slippage_activation_distance },
-            slippage_angle_adjustment_distance: if self.slippage_angle_adjustment_distance != 0.2 { self.slippage_angle_adjustment_distance } else { other.slippage_angle_adjustment_distance },
+            slippage_probability: if self.slippage_probability != 0.02 { self.slippage_probability } else { other.slippage_probability },
+            slippage_min_distance: if self.slippage_min_distance != 20.0 { self.slippage_min_distance } else { other.slippage_min_distance },
+            slippage_max_distance: if self.slippage_max_distance != 100.0 { self.slippage_max_distance } else { other.slippage_max_distance },
+            slippage_radius_min: if self.slippage_radius_min != 5.0 { self.slippage_radius_min } else { other.slippage_radius_min },
+            slippage_radius_max: if self.slippage_radius_max != 20.0 { self.slippage_radius_max } else { other.slippage_radius_max },
+            slippage_check_activation_distance: if self.slippage_check_activation_distance != 10.0 { self.slippage_check_activation_distance } else { other.slippage_check_activation_distance },
+            slippage_adjustment_step: if self.slippage_adjustment_step != 0.2 { self.slippage_adjustment_step } else { other.slippage_adjustment_step },
+            wheel_inbalance: if self.wheel_inbalance { self.wheel_inbalance } else { other.wheel_inbalance },
+            wheel_inbalance_radius_min: if self.wheel_inbalance_radius_min != 40.0 { self.wheel_inbalance_radius_min } else { other.wheel_inbalance_radius_min },
+            wheel_inbalance_radius_max: if self.wheel_inbalance_radius_max != 150.0 { self.wheel_inbalance_radius_max } else { other.wheel_inbalance_radius_max },
+            wheel_inbalance_adjustment_step: if self.wheel_inbalance_adjustment_step != 0.2 { self.wheel_inbalance_adjustment_step } else { other.wheel_inbalance_adjustment_step },
         }
     }
 }

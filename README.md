@@ -72,12 +72,19 @@ Below is a categorized list of all command line options for **gridcover** to hel
 ## Wheel slippage
 - `--wheel-slippage <True/False>` Enable wheel slippage
 - `--slippage-probability  <PROBABILITY>` Probability slippage may happen during an activation distance
-- `--slippage-min-distance` Minimums distance slippage will be enabled for
-- `--slippage_max_distance` Maximum distance slippage will be enabled for
-- `--slippage_angle_min` The minimum deviation angle 
-- `--slippage_angle_max` The maximum deviation angle 
-- `--check-slippage-activation-distance` Interval when we randomly check if there is a slippage 
-- `--slippage-angle-adjustment-distance` When slippage is enabled how frequently is the angle updated
+- `--slippage-min-distance <LENGTH>` Minimums distance slippage will be enabled for
+- `--slippage-max_distance <LENGTH>` Maximum distance slippage will be enabled for
+- `--slippage-radius-min <RADIUS>` The minimum radius to model turning
+- `--slippage-radius-max <RADIUS>` The maximum radius to model turning
+- `--slippage-check-activation-distance <LENGTH>` Interval when we randomly check if there is a slippage 
+- `--slippage-adjustment-step <LENGTH>` Step size for wheel slippage adjustment
+
+## Wheel inbalance
+- `wheel-inbalance <True/False>` Enable wheel inbalance
+- `wheel-inbalance-radius-min <RADIUS>` Minimum turning radius to model inbalance
+- `wheel-inbalance-radius-max <RADIUS>` Maximum turning radius to model inbalance
+- `wheel-inbalance-adjustment-step` Step size for wheel inbalance adjustment
+
 
 ## Simulation Control & Stopping Conditions
 - `-z, --step-size <STEP_SIZE>`  Simulation step size in units, automatically determined if not specified

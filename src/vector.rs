@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, AddAssign};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vector {
@@ -8,7 +8,7 @@ pub struct Vector {
 
 impl Add for Vector {
     type Output = Vector;
-    
+
     fn add(self, other: Vector) -> Vector {
         Vector {
             x: self.x + other.x,
@@ -17,13 +17,35 @@ impl Add for Vector {
     }
 }
 
+impl Sub for Vector {
+    type Output = Vector;
+
+    fn sub(self, other: Vector) -> Vector {
+        Vector {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+
 impl Mul<f64> for Vector {
     type Output = Vector;
-    
+
     fn mul(self, scalar: f64) -> Vector {
         Vector {
             x: self.x * scalar,
             y: self.y * scalar,
+        }
+    }
+}
+
+impl Neg for Vector {
+    type Output = Vector;
+
+    fn neg(self) -> Vector {
+        Vector {
+            x: -self.x,
+            y: -self.y,
         }
     }
 }
@@ -34,4 +56,3 @@ impl AddAssign for Vector {
         self.y += other.y;
     }
 }
-

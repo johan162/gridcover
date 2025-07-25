@@ -4,14 +4,38 @@ use crate::image::try_save_image;
 use crate::model::SimModel;
 use crate::strategy::cutter_strategy;
 use crate::vector::Vector;
+// use colored::Colorize;
 use rand::Rng;
 use std::io::Write;
 
 pub const FAILSAFE_TIME_LIMIT: f64 = 7.0 * 24.0 * 3600.0; // 7 days in simulated time to prevent infinite loop
 
+fn fast_inv_sqrt(x: f64) -> f64 {
+    let i = 0x5FE6EB50C7B537A9 - (x.to_bits() >> 1);
+    let y = f64::from_bits(i);
+    y * (1.5 - 0.5 * x * y * y) // One Newton iteration for better accuracy
+}
+
+fn normalize_vector(v: &mut Vector) {
+    let inv_length = fast_inv_sqrt(v.x * v.x + v.y * v.y);
+    v.x *= inv_length;
+    v.y *= inv_length;
+}
+
 pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
-    // Current bounce count and coverage percentage
-    // let mut current_bounce_count = 0;
+    // Both wheel slppage and inbalance are modeled as a slight change in the direction vector
+    // we model this by multiplying the direction vector with a rotation matrix
+    // and using the optimization that sin(a) = a , cos(a) = 1-(a^2)/2  for small angles.
+    // Also realizing that a^2 is negligible for small angles, we can linearize the rotation
+    // as:
+    // vx' = vx * cos(a) - vy * sin(a)  => vx' = vx - vy * a
+    // vy' = vx * sin(a) + vy * cos(a)  => vy' = vy + vx * a
+    // where vx and vy are the components of the direction
+    // vector, and a is the angle of rotation in radians.
+    // We then normalize the direction vector after each adjustment to keep it a unit vector.
+    // For this we use an approximation of the inverse square root
+    // which is faster than the standard sqrt function.
+
     let mut current_coverage_percent = 0.0;
     let mut coverage_cell_count;
     let mut sim_time_elapsed_since_last_charge = 0.0;
@@ -32,12 +56,28 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
     let steps_per_tenth_percent = (one_percent_cells * steps_per_cell / 10).min(1) as u64;
     let mut frame_counter: u64 = 0;
     let mut frame_image_numbering = 0;
+
+    // Status for wheel slippage
     let mut within_slippage = false;
     let mut slippage_current_distance = 0.0;
-    let mut slippage_angle = 0.0;
+    let mut slippage_adjustment_angle = 0.0;
     let mut slippage_end_distance = 0.0;
     let mut slippage_last_adjustment_distance = 0.0;
     let mut last_slippage_activation_check = 0.0;
+
+    // Status for wheel inbalance
+    let mut last_inbalance_adjustment_distance = 0.0;
+
+    // Generate randomly a -1 or a +1
+    let inbalance_sign = if rng.random_bool(0.5) { -1.0 } else { 1.0 };
+
+    // Get the radius as a random value between the min and max inbalance radius and have a random sign
+    // This is to simulate a wheel inbalance that can be positive or negative
+    let inbalance_radius = rng
+        .random_range(model.wheel_inbalance_radius_min..=model.wheel_inbalance_radius_max)
+        * inbalance_sign;
+    model.wheel_inbalance_radius_used = inbalance_radius;
+    let inbalance_adjustment_angle = model.wheel_inbalance_adjustment_step / inbalance_radius;
 
     const ERROR_MSG: &str = "Failed to get grid. Internal BUG!";
 
@@ -65,8 +105,19 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
         // Keep track of how far we have moved
         model.distance_covered += model.step_size;
 
-        // Calculate the next position of the circle center based on the current direction and step size
+        // Calculate the next position of the cutter center based on the current direction and step size
         cutter_center += current_dir * model.step_size;
+
+        // Check if we should model wheel inbalance
+        if model.wheel_inbalance
+            && model.distance_covered - last_inbalance_adjustment_distance
+                >= model.wheel_inbalance_adjustment_step
+        {
+            last_inbalance_adjustment_distance = model.distance_covered;
+            current_dir.x -= current_dir.y * inbalance_adjustment_angle;
+            current_dir.y += current_dir.x * inbalance_adjustment_angle;
+            normalize_vector(&mut current_dir);
+        }
 
         // Simulate one side wheel slippage that will cause the cuttter to slightly alter its course
         // This is a simple model of slippage, where we randomly change the direction slightly
@@ -74,25 +125,16 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
         if model.wheel_slippage {
             if within_slippage {
                 if model.distance_covered - slippage_last_adjustment_distance
-                    >= model.slippage_angle_adjustment_distance
+                    >= model.slippage_adjustment_step
                 {
                     slippage_last_adjustment_distance = model.distance_covered;
 
-                    // The new angle is the current angle plus the slippage angle
-                    let new_angle = current_dir.y.atan2(current_dir.x) + slippage_angle;
-
-                    // Get the new direction vector based on the new angle
-                    current_dir.x = new_angle.cos();
-                    current_dir.y = new_angle.sin();
+                    current_dir.x -= current_dir.y * slippage_adjustment_angle;
+                    current_dir.y += current_dir.x * slippage_adjustment_angle;
+                    normalize_vector(&mut current_dir);
 
                     if slippage_current_distance >= slippage_end_distance {
-                        if model.verbosity > 2 {
-                            println!(
-                                "\nSlippage ended at distance: {:.4}",
-                                model.distance_covered
-                            );
-                        }
-                        // Reset slippage state after the distance is covered
+                        // Stop slippage state after the slippage distance is covered
                         within_slippage = false;
                         slippage_current_distance = 0.0;
                         last_slippage_activation_check = model.distance_covered;
@@ -100,36 +142,34 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
                 }
                 slippage_current_distance += model.step_size;
             } else if model.distance_covered - last_slippage_activation_check
-                >= model.check_slippage_activation_distance
+                >= model.slippage_check_activation_distance
             {
                 last_slippage_activation_check = model.distance_covered;
                 // If not within slippage range, we randomly decide to enter a slippage state
                 if rng.random_range(0.0..1.0) < model.slippage_probability {
-                    // Enter slippage state
                     within_slippage = true;
+
+                    let slippage_sign = if rng.random_bool(0.5) { -1.0 } else { 1.0 };
+                    let slippage_radius = rng
+                        .random_range(model.slippage_radius_min..=model.slippage_radius_max)
+                        * slippage_sign;
+                    slippage_adjustment_angle = model.slippage_adjustment_step / slippage_radius;
+
                     slippage_end_distance =
                         rng.random_range(model.slippage_min_distance..=model.slippage_max_distance);
-                    // Slippage angle between 0.1 and 2.0 degrees
-                    slippage_angle = rng
-                        .random_range(model.slippage_angle_min..=model.slippage_angle_max)
-                        .to_radians();
 
-                    // Get the current angle of the direction vector
-                    let current_angle = current_dir.y.atan2(current_dir.x);
+                    current_dir.x -= current_dir.y * slippage_adjustment_angle;
+                    current_dir.y += current_dir.x * slippage_adjustment_angle;
+                    normalize_vector(&mut current_dir);
 
-                    // The new angle is the current angle plus the slippage angle
-                    let new_angle = current_angle + slippage_angle;
-
-                    // Get the new direction vector based on the new angle
-                    current_dir.x = new_angle.cos();
-                    current_dir.y = new_angle.sin();
                     slippage_current_distance = 0.0;
                     slippage_last_adjustment_distance = model.distance_covered;
 
                     if model.verbosity > 2 {
                         println!(
-                            "\nSlippage activated at dstance: {slippage_last_adjustment_distance:.4},  with angle: {:.4}, length: {slippage_end_distance:.4}",
-                            slippage_angle.to_degrees(),
+                            "\nSlippage activated at dstance: {slippage_last_adjustment_distance:.4},  with angle: {:.4}, radius {:.4}, length: {slippage_end_distance:.4}",
+                            slippage_adjustment_angle.to_degrees(),
+                            slippage_radius
                         );
                     }
                 }
@@ -157,8 +197,7 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
                 .expect(ERROR_MSG)
                 .collision_with_obstacle(cutter_center.x, cutter_center.y, model.radius)
         {
-            current_dir.x = -current_dir.x; // Reverse x direction
-            current_dir.y = -current_dir.y; // Reverse y direction
+            current_dir = -current_dir; // Reverse direction if we hit an obstacle
             collision_detected = true; // Mark as collision detected 
 
             // Make the position un-collided by moving one step in reverse direction

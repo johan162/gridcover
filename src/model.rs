@@ -87,10 +87,15 @@ pub struct SimModel {
     pub slippage_probability: f64,
     pub slippage_min_distance: f64,
     pub slippage_max_distance: f64,
-    pub slippage_angle_min: f64,
-    pub slippage_angle_max: f64,
-    pub check_slippage_activation_distance: f64,
-    pub slippage_angle_adjustment_distance: f64,
+    pub slippage_radius_min: f64,
+    pub slippage_radius_max: f64,
+    pub slippage_check_activation_distance: f64,
+    pub slippage_adjustment_step: f64,
+    pub wheel_inbalance: bool,
+    pub wheel_inbalance_radius_min: f64,
+    pub wheel_inbalance_radius_max: f64,
+    pub wheel_inbalance_radius_used: f64,
+    pub wheel_inbalance_adjustment_step: f64,
 }
 
 // Define a constant for the simulation step size factor
@@ -148,10 +153,14 @@ impl SimModel {
         slippage_probability: f64,
         slippage_min_distance: f64,
         slippage_max_distance: f64,
-        slippage_angle_min: f64,
-        slippage_angle_max: f64,
-        check_slippage_activation_distance: f64,
-        slippage_angle_adjustment_distance: f64,
+        slippage_radius_min: f64,
+        slippage_radius_max: f64,
+        slippage_check_activation_distance: f64,
+        slippage_adjustment_step: f64,
+        wheel_inbalance: bool,
+        wheel_inbalance_radius_min: f64,
+        wheel_inbalance_radius_max: f64,
+        wheel_inbalance_adjustment_step: f64,
     ) -> Self {
         Self {
             start_x,
@@ -222,10 +231,15 @@ impl SimModel {
             slippage_probability,
             slippage_min_distance,
             slippage_max_distance,
-            slippage_angle_min,
-            slippage_angle_max,
-            check_slippage_activation_distance,
-            slippage_angle_adjustment_distance,
+            slippage_radius_min,
+            slippage_radius_max,
+            slippage_check_activation_distance,
+            slippage_adjustment_step,
+            wheel_inbalance,
+            wheel_inbalance_radius_min,
+            wheel_inbalance_radius_max,
+            wheel_inbalance_adjustment_step,
+            wheel_inbalance_radius_used: 0.0,
         }
     }
 
@@ -278,10 +292,14 @@ impl SimModel {
             args.slippage_probability,
             args.slippage_min_distance,
             args.slippage_max_distance,
-            args.slippage_angle_min,
-            args.slippage_angle_max,
-            args.check_slippage_activation_distance,
-            args.slippage_angle_adjustment_distance,
+            args.slippage_radius_min,
+            args.slippage_radius_max,
+            args.slippage_check_activation_distance,
+            args.slippage_adjustment_step,
+            args.wheel_inbalance,
+            args.wheel_inbalance_radius_min,
+            args.wheel_inbalance_radius_max,
+            args.wheel_inbalance_adjustment_step,
         )
     }
 
@@ -299,16 +317,23 @@ impl SimModel {
                         "Charge Time": self.battery_charge_time,
                     },
                     "Velocity": self.velocity,
-                },
-                "Slippage": {
-                    "Enabled": self.wheel_slippage,
-                    "Probability per activation": self.slippage_probability,
-                    "Activation distance": self.check_slippage_activation_distance,
-                    "Angle adjustment distance": self.slippage_angle_adjustment_distance,
-                    "Min Duration Distance": self.slippage_min_distance,
-                    "Max Duration Distance": self.slippage_max_distance,
-                    "Min Angle (deg)": self.slippage_angle_min,
-                    "Max Angle (deg)": self.slippage_angle_max,
+                    "Wheel Inbalance": {
+                        "Enabled": self.wheel_inbalance,
+                        "Radius min": self.wheel_inbalance_radius_min,
+                        "Radius max": self.wheel_inbalance_radius_max,
+                        "Radius used": self.wheel_inbalance_radius_used,
+                        "Adjustment step": self.wheel_inbalance_adjustment_step,
+                    },
+                    "Slippage": {
+                        "Enabled": self.wheel_slippage,
+                        "Probability per activation": self.slippage_probability,
+                        "Activation check distance": self.slippage_check_activation_distance,
+                        "Adjustment step": self.slippage_adjustment_step,
+                        "Min Duration Distance": self.slippage_min_distance,
+                        "Max Duration Distance": self.slippage_max_distance,
+                        "Radius min": self.slippage_radius_min,
+                        "Radius max": self.slippage_radius_max,
+                    },
                 },
                 "Simulation": {
                     "Verbosity": self.verbosity,
@@ -441,6 +466,13 @@ impl SimModel {
                     "Velocity": self.velocity,
                     "Distance": self.distance_covered,
                     "Cells under": (2.0*self.radius/self.cell_size).floor() * (2.0*self.radius/self.cell_size).floor(),
+                    "Wheel Inbalance": {
+                        "Enabled": self.wheel_inbalance,
+                        "Radius min": self.wheel_inbalance_radius_min,
+                        "Radius max": self.wheel_inbalance_radius_max,
+                        "Radius used in sim": self.wheel_inbalance_radius_used,
+                        "Adjustment step": self.wheel_inbalance_adjustment_step,
+                    },
                     "Battery": {
                         "Run time": self.battery_run_time,
                         "Charge time": self.battery_charge_time,
@@ -711,6 +743,24 @@ pub fn init_model(
 ) -> Result<SimModel, Box<dyn std::error::Error>> {
     // Initialize simulation configuration
     let mut model = SimModel::init(args);
+
+    // Check that min inbalance radius is less than max inbalance radius
+    if model.wheel_inbalance_radius_min >= model.wheel_inbalance_radius_max {
+        return Err(format!(
+            "Wheel inbalance radius min ({}) must be less than max ({})",
+            model.wheel_inbalance_radius_min, model.wheel_inbalance_radius_max
+        )
+        .into());
+    }
+
+    // Check that min slippage radius is less than max slippage radius
+    if model.slippage_radius_min >= model.slippage_radius_max {
+        return Err(format!(
+            "Wheel slippage radius min ({}) must be less than max ({})",
+            model.slippage_radius_min, model.slippage_radius_max
+        )
+        .into());
+    }
 
     // Check that any explicitly specified color theme actually exists
     if let Some(ref theme) = model.color_theme {
