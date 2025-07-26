@@ -38,7 +38,11 @@ by default the program wil be installed in `/usr/local/bin`
 
 ### Linux
 
-See the user guide for installation from source
+The distribution have a RPM package for Fedora/Red Hat/CentOs. Install with:
+
+```bash
+sudo dnf install target/pkg/gridcover-2.1.0-1.fc42.x86_64.rpm
+```
 
 ### Windows
 
