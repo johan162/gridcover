@@ -96,6 +96,7 @@ pub struct SimModel {
     pub wheel_inbalance_radius_max: f64,
     pub wheel_inbalance_radius_used: f64,
     pub wheel_inbalance_adjustment_step: f64,
+    pub random_seed: u64,
 }
 
 // Define a constant for the simulation step size factor
@@ -161,6 +162,7 @@ impl SimModel {
         wheel_inbalance_radius_min: f64,
         wheel_inbalance_radius_max: f64,
         wheel_inbalance_adjustment_step: f64,
+        random_seed: u64,
     ) -> Self {
         Self {
             start_x,
@@ -240,6 +242,7 @@ impl SimModel {
             wheel_inbalance_radius_max,
             wheel_inbalance_adjustment_step,
             wheel_inbalance_radius_used: 0.0,
+            random_seed,
         }
     }
 
@@ -300,6 +303,7 @@ impl SimModel {
             args.wheel_inbalance_radius_min,
             args.wheel_inbalance_radius_max,
             args.wheel_inbalance_adjustment_step,
+            args.random_seed,
         )
     }
 
@@ -344,6 +348,7 @@ impl SimModel {
                     "Perturb at Bounces": self.perturb,
                     "Perturb Segment": self.perturb_segment,
                     "Perturb Segment Percent": self.perturb_segment_percent * 100.0,
+                    "Random Seed": self.random_seed,
                 },
                 "Frames": {
                     "Enabled": self.generate_frames,
@@ -450,7 +455,7 @@ impl SimModel {
             self.get_theorethical_minimum_cutting_time();
 
         let json = json!({
-            "Simulation Result": {
+            "Result": {
                 "Coverage": {
                     "Percent": self.coverage_percent,
                     "Cells": self.coverage_count,
@@ -564,7 +569,7 @@ impl SimModel {
         //     self.get_theorethical_minimum_cutting_time();
 
         json!({
-            "Simulation Result (Short)": {
+            "Result": {
                 "Coverage": {
                     "Percent": self.coverage_percent,
                     "Bounces": self.segment_number,
@@ -617,7 +622,7 @@ impl SimModel {
     /// by converting the JSON to a label: <value> format.
     pub fn print_simulation_results_txt(&self) {
         let json = self.get_simulation_result_as_json();
-        const ROOT_KEY: &str = "Simulation Result";
+        const ROOT_KEY: &str = "Result";
         println!("{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
         println!(
             "{}",
@@ -633,7 +638,7 @@ impl SimModel {
     /// by converting the JSON to a label: <value> format.
     pub fn print_simulation_results_short_txt(&self) {
         let json = self.get_simulation_result_short_as_json();
-        const ROOT_KEY: &str = "Simulation Result (Short)";
+        const ROOT_KEY: &str = "Result";
         println!("{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
         println!(
             "{}",

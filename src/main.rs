@@ -63,7 +63,7 @@ fn main() {
             Err(err) => {
                 eprintln!(
                     "{} {}",
-                    "Error reading args from TOML:"
+                    "Error: Cannot read args from TOML:"
                         .color(colored::Color::Red)
                         .bold(),
                     err
@@ -77,7 +77,7 @@ fn main() {
         write_args_to_file(&args, args_write_file.as_str()).unwrap_or_else(|err| {
             eprintln!(
                 "{} {}",
-                "Error writing args to TOML:"
+                "Error: Cannot write args to TOML:"
                     .color(colored::Color::Red)
                     .bold(),
                 err
@@ -91,15 +91,27 @@ fn main() {
         rand::rngs::StdRng::seed_from_u64(args.random_seed)
     } else {
         let seed = rand::random::<u64>();
+        args.random_seed = seed; // Store the random seed in args for later use
         rand::rngs::StdRng::seed_from_u64(seed)
     };
+
+    // If animation is enabled, check if ffmpeg is installed
+    if args.create_animation && video::is_ffmpeg_installed().is_err() {
+        eprintln!(
+            "{}",
+            "Error: FFmpeg is not installed or not found in PATH. FFmpeg is needed to create animation. \nOn OSX you can install it with `brew install ffmpeg`"
+                .color(colored::Color::Red)
+                .bold()
+        );
+        std::process::exit(1);
+    }
 
     let mut model = match init_model(&args, &mut rng) {
         Ok(model) => model,
         Err(err) => {
             eprintln!(
                 "{} {}",
-                "Error initializing simulation model:"
+                "Error: Failed to initialize simulation model:"
                     .color(colored::Color::Red)
                     .bold(),
                 err
@@ -134,8 +146,8 @@ fn main() {
     if model.sim_time_elapsed >= FAILSAFE_TIME_LIMIT {
         eprintln!(
             "{}",
-            "Simulation ABORTED after 604,800 simulation seconds to prevent infinite loop!\n"
-                .color(colored::Color::Red)
+            "WARNING: Simulation ABORTED after 604,800 simulation seconds to prevent infinite loop!\n"
+                .color(colored::Color::Yellow)
                 .bold()
         );
     }
@@ -150,10 +162,10 @@ fn main() {
 
     try_store_result_to_db(&args, &model);
     try_save_image(&model, None);
-    let ffmpeg_encoding_duration = try_video_encoding(&model).unwrap_or_else(|err| {
+    let ffmpeg_encoding_duration = try_video_encoding(&mut model).unwrap_or_else(|err| {
         eprintln!(
             "{} {}",
-            "Error creating video from simulation frames:"
+            "Error: Failed to create animation:"
                 .color(colored::Color::Red)
                 .bold(),
             err

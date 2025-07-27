@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
+pub fn try_video_encoding(model: &mut SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
     let mut duration: Duration = Duration::zero();
     if model.create_animation {
         is_ffmpeg_installed()?;
@@ -16,12 +16,29 @@ pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::err
 
         try_print_encoding_info(model, encoder, &animation_file_name);
 
+        if !model.quiet {
+            println!(
+                "{}",
+                format!("Encoding video with at {} FPS ...", model.frame_rate)
+                    .color(colored::Color::Green)
+                    .bold()
+            );
+            if model.verbosity == 1 {
+                println!(
+                    "{}",
+                    format!("Running: 'ffmpeg -framerate {} -pattern_type glob -i \"{}/frame_*.png\" -c:v {} -pix_fmt yuv420p \"{}\"'", 
+                    model.frame_rate, model.frames_dir, encoder, animation_file_name).color(colored::Color::Blue).bold()
+                );
+            }
+            // Empty IO buffer to make sure the output is flushed immediately
+            std::io::stdout().flush().unwrap();
+        }
         // Determine the time to do ffmpeg encoding.
         let start_time = std::time::Instant::now();
 
         // Build the ffmpeg command to create the video
-        // Example1 (Linux): ffmpeg -framerate 10 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_nvenc        -pix_fmt yuv420p cutter_sim.mp4
-        // Example2 (MacOS): ffmpeg -framerate 10 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_videotoolbox -pix_fmt yuv420p cutter_sim.mp4
+        // Example1 (Linux): ffmpeg -framerate 5 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_nvenc        -pix_fmt yuv420p cutter_sim.mp4
+        // Example2 (MacOS): ffmpeg -framerate 5 -pattern_type glob -i 'frames_dir/*.png' -c:v hevc_videotoolbox -pix_fmt yuv420p cutter_sim.mp4
         //
         let video_cmd_output = Command::new("ffmpeg")
             .args([
@@ -49,6 +66,7 @@ pub fn try_video_encoding(model: &SimModel) -> Result<Duration, Box<dyn std::err
                     "Error creating video: 'ffmpeg' command failed. Most likely the H.265/HEVC encoder is not installed or does not support the frame size.".color(colored::Color::Red).bold(),
                     "Retrying with SW encoding fallback options.".color(colored::Color::Red).bold()
                 );
+                std::io::stderr().flush().unwrap();
             }
             let video_cmd_output = Command::new("ffmpeg")
                 .args([
@@ -149,7 +167,7 @@ fn try_print_encoding_info(model: &SimModel, encoder: &'static str, animation_fi
     }
 }
 
-fn get_animation_file_name(model: &SimModel) -> Result<String, Box<dyn Error>> {
+fn get_animation_file_name(model: &mut SimModel) -> Result<String, Box<dyn Error>> {
     let mut animation_file_name = model.animation_file_name.clone();
     if Path::new(&animation_file_name).exists() {
         // Try adding numbers 1-9 at the end of the file name
@@ -176,6 +194,7 @@ fn get_animation_file_name(model: &SimModel) -> Result<String, Box<dyn Error>> {
                     .bold()
                 );
             }
+            model.animation_file_name = animation_file_name.clone();
         } else {
             Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
@@ -194,7 +213,7 @@ fn get_animation_file_name(model: &SimModel) -> Result<String, Box<dyn Error>> {
     Ok(animation_file_name)
 }
 
-fn is_ffmpeg_installed() -> Result<(), Box<dyn Error>> {
+pub fn is_ffmpeg_installed() -> Result<(), Box<dyn Error>> {
     if Command::new("ffmpeg").arg("-version").output().is_err() {
         return Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::NotFound,

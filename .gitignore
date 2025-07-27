@@ -15,4 +15,4 @@ frames_dir
 *.rs.bk~
 .DS_Store
 .idea
-
+*.sqlite*

@@ -348,7 +348,7 @@ pub struct Args {
     pub animation_file_name: String,
 
     /// Animation speedup factor
-    #[arg(long, short = 'U', default_value_t = 1, value_name = "ANIMATION-SPEEDUP-FACTOR")]
+    #[arg(long, short = 'U', default_value_t = 6, value_name = "ANIMATION-SPEEDUP-FACTOR")]
     pub animation_speedup: u64,
 
     /// Use HW assisted encoding for the animation. This is only available on macOS and Linux

@@ -89,7 +89,6 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `wheel-inbalance-radius-max <RADIUS>` Maximum turning radius to model inbalance
 - `wheel-inbalance-adjustment-step` Step size for wheel inbalance adjustment
 
-
 ## Simulation Control & Stopping Conditions
 - `-z, --step-size <STEP_SIZE>`  Simulation step size in units, automatically determined if not specified
 - `-b, --stop-bounces <STOP_BOUNCES>`  Maximum number of bounces before ending simulation
@@ -205,25 +204,25 @@ Note: By specifying the random seed (with `-S`) the exact same result can be ach
 
 ```txt
 $> gridcover -R true -c 50
-Coverage:  50.00% ( 125002/ 250000 cells covered), Distance: 225.66, Bounces:   32, Sim-Time: 00:12:32
+Coverage:  50.00% (  70317/ 140625 cells covered), Distance: 146.64, Bounces:   29, Sim-Time: 00:08:08
 
-Simulation Result (Short)
-=========================
-Coverage                                
-  Coverage.Bounces                      : 32
-  Coverage.Distance                     : 225.6600000000081
-  Coverage.Percent                      : 50.0008
-Cutter                                  
-  Battery                               
-    Cutter.Battery.Charge count         : 0
-    Cutter.Battery.Charge left (%)      : 100.0
-  Cutter.Blade Length                   : 0.05
-  Cutter.Radius                         : 0.2
-  Cutter.Type                           : "blade"
-  Cutter.Velocity                       : 0.3
-Time                                    
-  Time.CPU                              : "00:00:00.264"
-  Time.Cutting                          : "00:12:32"
+Result
+======
+Coverage                                     
+  Coverage.Bounces                           : 29
+  Coverage.Distance                          : 146.6400000000051
+  Coverage.Percent                           : 50.00320000000001
+Cutter                                       
+  Battery                                    
+    Cutter.Battery.Charge count              : 0
+    Cutter.Battery.Charge left (%)           : 100.0
+  Cutter.Blade Length                        : 0.05
+  Cutter.Radius                              : 0.15
+  Cutter.Type                                : "blade"
+  Cutter.Velocity                            : 0.3
+Time                                         
+  Time.CPU                                   : "00:00:00.442"
+  Time.Cutting                               : "00:08:08"
 ```
 
 From the result we can see that it took 6min and 56s to cut 50% of the area. 
@@ -237,25 +236,25 @@ If we change the first example in two ways:
 
 ```txt
 $> gridcover -R true -d 500 -o test.png
-Coverage:  82.09% ( 205228/ 250000 cells covered), Distance: 500.00, Bounces:   84, Sim-Time: 00:27:46
+Coverage:  89.65% ( 126064/ 140625 cells covered), Distance: 500.00, Bounces:  106, Sim-Time: 00:27:46
 
-Simulation Result (Short)
-=========================
-Coverage                                
-  Coverage.Bounces                      : 84
-  Coverage.Distance                     : 500.0040000000185
-  Coverage.Percent                      : 82.0912
-Cutter                                  
-  Battery                               
-    Cutter.Battery.Charge count         : 0
-    Cutter.Battery.Charge left (%)      : 100.0
-  Cutter.Blade Length                   : 0.05
-  Cutter.Radius                         : 0.2
-  Cutter.Type                           : "blade"
-  Cutter.Velocity                       : 0.3
-Time                                    
-  Time.CPU                              : "00:00:00.472"
-  Time.Cutting                          : "00:27:46"
+Result
+======
+Coverage                                     
+  Coverage.Bounces                           : 106
+  Coverage.Distance                          : 500.0040000000185
+  Coverage.Percent                           : 89.6455111111111
+Cutter                                       
+  Battery                                    
+    Cutter.Battery.Charge count              : 0
+    Cutter.Battery.Charge left (%)           : 100.0
+  Cutter.Blade Length                        : 0.05
+  Cutter.Radius                              : 0.15
+  Cutter.Type                                : "blade"
+  Cutter.Velocity                            : 0.3
+Time                                         
+  Time.CPU                                   : "00:00:01.708"
+  Time.Cutting                               : "00:27:46"
 ```
 
 **Note:** The efficiency is not calculated when the stopping condition is distance travelled as it is not applicable (as it is only possible to calculate a minimum time for coverage)
@@ -276,23 +275,23 @@ In addition a small time (1-15min) is randomly added (automatically) to simulate
 $> gridcover -R true -d 2000 -B 90 -A 180 -o test.png
 Coverage:  98.57% ( 246435/ 250000 cells covered), Distance: 2000.00, Bounces:  320, Sim-Time: 04:58:13, Battery capacity left:  76.5%
 
-Simulation Result (Short)
-=========================
-Coverage                                
-  Coverage.Bounces                      : 320
-  Coverage.Distance                     : 2000.0039999930268
-  Coverage.Percent                      : 98.574
-Cutter                                  
-  Battery                               
-    Cutter.Battery.Charge count         : 1
-    Cutter.Battery.Charge left (%)      : 76.5437037037143
-  Cutter.Blade Length                   : 0.05
-  Cutter.Radius                         : 0.2
-  Cutter.Type                           : "blade"
-  Cutter.Velocity                       : 0.3
-Time                                    
-  Time.CPU                              : "00:00:02.488"
-  Time.Cutting                          : "04:58:13"
+Result
+======
+Coverage                                     
+  Coverage.Bounces                           : 407
+  Coverage.Distance                          : 2000.0039999930268
+  Coverage.Percent                           : 99.2256
+Cutter                                       
+  Battery                                    
+    Cutter.Battery.Charge count              : 1
+    Cutter.Battery.Charge left (%)           : 76.5437037037143
+  Cutter.Blade Length                        : 0.05
+  Cutter.Radius                              : 0.15
+  Cutter.Type                                : "blade"
+  Cutter.Velocity                            : 0.3
+Time                                         
+  Time.CPU                                   : "00:00:07.391"
+  Time.Cutting                               : "04:54:51"
 ```
 
 ## 4. Using obstacle map and animation video
