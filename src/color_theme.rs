@@ -5,6 +5,8 @@ pub struct ColorTheme {
     pub name: String,
     pub grid_background_color: [u8; 3],
     pub grid_line_color: [u8; 3],
+    pub text_color: [u8; 3],
+    pub text_background_adjustment: f32,
     pub obstacle_color: [u8; 3],
     pub center_color: [u8; 3],
     pub coverage_shades: Vec<[u8; 3]>,
@@ -91,6 +93,8 @@ impl ColorThemeManager {
         let theme = ColorTheme {
             name: "default".to_string(),
             grid_background_color: [150, 150, 150],
+            text_color: [255, 255, 255],
+            text_background_adjustment: 0.4,
             grid_line_color: [0, 0, 0],
             obstacle_color: [150, 0, 0],
             center_color: [0, 0, 0],
@@ -125,6 +129,8 @@ impl ColorThemeManager {
         let theme = ColorTheme {
             name: "green30".to_string(),
             grid_background_color: [150, 150, 150],
+            text_color: [255, 255, 255],
+            text_background_adjustment: 0.4,
             grid_line_color: [0, 0, 0],
             obstacle_color: [150, 0, 0],
             center_color: [0, 0, 0],
@@ -168,6 +174,8 @@ impl ColorThemeManager {
         let theme = ColorTheme {
             name: "pure_green".to_string(),
             grid_background_color: [150, 150, 150],
+            text_color: [255, 255, 255],
+            text_background_adjustment: 0.4,
             grid_line_color: [0, 0, 0],
             obstacle_color: [150, 0, 0],
             center_color: [0, 0, 0],
@@ -211,6 +219,8 @@ impl ColorThemeManager {
         let theme = ColorTheme {
             name: "gray_green".to_string(),
             grid_background_color: [150, 150, 150],
+            text_color: [255, 255, 255],
+            text_background_adjustment: 0.2,
             grid_line_color: [0, 0, 0],
             obstacle_color: [150, 0, 0],
             center_color: [0, 0, 0],
@@ -254,6 +264,8 @@ impl ColorThemeManager {
         let theme = ColorTheme {
             name: "blue".to_string(),
             grid_background_color: [150, 150, 150],
+            text_color: [255, 255, 255],
+            text_background_adjustment: 0.3,
             grid_line_color: [0, 0, 0],
             obstacle_color: [150, 0, 0],
             center_color: [0, 0, 0],
@@ -287,10 +299,12 @@ impl ColorThemeManager {
     fn register_high_contrast_theme(&mut self) {
         let theme = ColorTheme {
             name: "orange_red".to_string(),
-            grid_background_color: [255, 255, 255], // White background
-            grid_line_color: [128, 128, 128],       // Gray lines
-            obstacle_color: [0, 0, 255],            // Bright blue
-            center_color: [0, 0, 0],                // Black
+            grid_background_color: [255, 255, 255],
+            text_color: [255, 255, 255],
+            text_background_adjustment: 0.1,
+            grid_line_color: [128, 128, 128],
+            obstacle_color: [0, 0, 255],
+            center_color: [0, 0, 0],
             coverage_shades: vec![
                 [255, 255, 0], // Yellow
                 [255, 200, 0], // Orange-yellow

@@ -65,7 +65,10 @@ OUTPUT_PKG_NAME_INTEL_WIN := "$(APP_NAME_PKG)-$(APP_VERSION_PKG)-windows.zip"
 OUTPUT_RPM_NAME := "$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64.rpm"
 
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
-.PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, uninstall-pkg, check
+.PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, \
+tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, \
+uninstall-pkg, uninstall-pkg, check, fonts
+
 .DEFAULT_GOAL := b ## Build debug version
 
 help: ## Display this help message
@@ -106,6 +109,13 @@ br: ## Build host arch release profile using cargo
 		$(MAKE) bump-build; \
 	fi
 	cargo build --release
+
+fonts: ## Generate font data files
+	@cd scripts && ./gen_font_data.sh
+
+scc: ## Generate complexity report
+	@scc -n font_dejavusans -f html-table | pandoc -f html -t markdown_strict > docs/scc.md
+	@echo "Complexity report generated at docs/scc.md"
 
 test: ## Test the project on host arch using cargo
 	cargo test

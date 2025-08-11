@@ -1,4 +1,4 @@
-use crate::model::{coverageinfo::CoverageInfo, cuttertype::CutterType};
+use crate::model::{coverageinfo::CoverageInfo, cuttertype::CutterType, quadtree::QuadTree};
 use crate::vector::Vector;
 
 #[derive(Debug, Clone)]
@@ -41,6 +41,9 @@ pub struct Grid {
     pub cells_y: usize,
     pub covered_cells: usize,
     pub cells_obstacles_count: usize,
+    pub quadtree: Option<QuadTree>,
+    pub num_detailed_collision_checks: usize,
+    pub use_quad_tree: bool,
 }
 
 impl Grid {
@@ -54,7 +57,35 @@ impl Grid {
             cells_y: grid_cells_y,
             covered_cells: 0,
             cells_obstacles_count: 0,
+            quadtree: None,
+            num_detailed_collision_checks: 0,
+            use_quad_tree: false,
         }
+    }
+
+    /// Initialize the spatial index for the grid using a quad-tree
+    pub fn init_spatial_index(&mut self, cutter_radius: f64, min_qnode_size: f64) {
+        let quad_tree = QuadTree::build_from_grid(self, cutter_radius, min_qnode_size);
+        self.quadtree = Some(quad_tree);
+    }
+
+    /// Save the spatial index to a file
+    pub fn save_spatial_index<P: AsRef<std::path::Path>>(&self, path: P) -> std::io::Result<()> {
+        if let Some(tree) = &self.quadtree {
+            tree.save_to_file(path)
+        } else {
+            Ok(()) // No spatial index to save
+        }
+    }
+
+    #[allow(dead_code)]
+    /// Load the spatial index from a file
+    pub fn load_spatial_index<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+    ) -> std::io::Result<()> {
+        self.quadtree = Some(QuadTree::load_from_file(path)?);
+        Ok(())
     }
 
     pub fn get_numcells(&self) -> (usize, usize) {
@@ -75,7 +106,7 @@ impl Grid {
     }
 
     // Count the number of cells with an obstacle
-    pub fn update_obstacle_count(&mut self) {
+    pub fn update_obstacle_cells_count(&mut self) {
         self.cells_obstacles_count = self
             .cells
             .iter()
@@ -123,22 +154,33 @@ impl Grid {
             .unwrap_or(0)
     }
 
-    // Add methods to convert between real-world coordinates and grid coordinates
-    pub fn coordinate_to_grid_x(&self, x: f64) -> usize {
+    /// Convert world coordinates to grid coordinates
+    /// Always make this inline
+    #[inline]
+    pub fn world_coordinate_to_grid_x(&self, x: f64) -> usize {
         (x / self.cell_size).floor() as usize
     }
 
-    pub fn coordinate_to_grid_y(&self, y: f64) -> usize {
+    /// Convert world coordinates to grid coordinates
+    /// Always make this inline
+    #[inline]
+    pub fn world_coordinate_to_grid_y(&self, y: f64) -> usize {
         (y / self.cell_size).floor() as usize
     }
 
-    pub fn coordinate_to_grid(&self, x: f64, y: f64) -> (usize, usize) {
-        let grid_x = self.coordinate_to_grid_x(x);
-        let grid_y = self.coordinate_to_grid_y(y);
+    /// Convert world coordinates to grid coordinates
+    /// Always make this inline
+    #[inline]
+    pub fn world_coordinate_to_grid(&self, x: f64, y: f64) -> (usize, usize) {
+        let grid_x = self.world_coordinate_to_grid_x(x);
+        let grid_y = self.world_coordinate_to_grid_y(y);
         (grid_x, grid_y)
     }
 
-    pub fn grid_to_coordinate(&self, grid_x: usize, grid_y: usize) -> (f64, f64) {
+    /// Convert grid coordinates to world coordinates
+    /// Always make this inline
+    #[inline]
+    pub fn grid_to_world_coordinate(&self, grid_x: usize, grid_y: usize) -> (f64, f64) {
         let x = grid_x as f64 * self.cell_size;
         let y = grid_y as f64 * self.cell_size;
         (x, y)
@@ -149,19 +191,30 @@ impl Grid {
     //     let grid_y = self.coordinate_to_grid_y(y);
 
     //     if let Some(cell) = self.get_cell(grid_x, grid_y) {
-    //         if cell.is_obstacle() {
-    //             return true;
-    //         };
+    //         return cell.is_obstacle();
     //     }
     //     false
     // }
 
     /// Check if there is an obstacle in a bounding box determined by the given radius around the given center point.
     #[allow(clippy::collapsible_if)]
-    pub fn collision_with_obstacle(&self, center_x: f64, center_y: f64, radius: f64) -> bool {
+    pub fn collision_with_obstacle(&mut self, center_x: f64, center_y: f64, radius: f64) -> bool {
+        // First check the spatial index if available
+        if self.use_quad_tree {
+            if let Some(quad_tree) = &self.quadtree {
+                if !quad_tree.might_have_collision(center_x, center_y, radius) {
+                    return false; // No collision possible in this area
+                }
+            }
+        }
+
+        self.num_detailed_collision_checks += 1;
+
+        // If no spatial index or quad-tree indicates possible collision,
+        // perform detailed collision check
         let grid_radius = (radius / self.cell_size).ceil() as i32;
-        let grid_center_x = self.coordinate_to_grid_x(center_x) as i32;
-        let grid_center_y = self.coordinate_to_grid_y(center_y) as i32;
+        let grid_center_x = self.world_coordinate_to_grid_x(center_x) as i32;
+        let grid_center_y = self.world_coordinate_to_grid_y(center_y) as i32;
 
         for dx in -grid_radius..=grid_radius {
             for dy in -grid_radius..=grid_radius {
@@ -196,6 +249,7 @@ impl Grid {
         self.covered_cells
     }
 
+    #[allow(dead_code)]
     pub fn get_obstacle_count(&self) -> usize {
         self.cells_obstacles_count
     }
@@ -272,8 +326,8 @@ impl Grid {
         track_center: bool,
     ) {
         let grid_radius = (radius / self.cell_size).ceil() as i32;
-        let grid_center_x = self.coordinate_to_grid_x(center.x) as i32;
-        let grid_center_y = self.coordinate_to_grid_y(center.y) as i32;
+        let grid_center_x = self.world_coordinate_to_grid_x(center.x) as i32;
+        let grid_center_y = self.world_coordinate_to_grid_y(center.y) as i32;
 
         for dx in -grid_radius..=grid_radius {
             for dy in -grid_radius..=grid_radius {

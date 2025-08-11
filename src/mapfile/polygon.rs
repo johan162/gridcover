@@ -12,10 +12,10 @@ pub fn apply_polygon_obstacle(grid: &mut Grid, points: &[[f64; 2]]) {
     let (min_x, max_x, min_y, max_y) = get_polygon_bounds(points);
 
     // Convert to grid coordinates
-    let grid_min_x = grid.coordinate_to_grid_x(min_x).saturating_sub(1);
-    let grid_max_x = (grid.coordinate_to_grid_x(max_x) + 1).min(grid.cells_x);
-    let grid_min_y = grid.coordinate_to_grid_y(min_y).saturating_sub(1);
-    let grid_max_y = (grid.coordinate_to_grid_y(max_y) + 1).min(grid.cells_y);
+    let grid_min_x = grid.world_coordinate_to_grid_x(min_x).saturating_sub(1);
+    let grid_max_x = (grid.world_coordinate_to_grid_x(max_x) + 1).min(grid.cells_x);
+    let grid_min_y = grid.world_coordinate_to_grid_y(min_y).saturating_sub(1);
+    let grid_max_y = (grid.world_coordinate_to_grid_y(max_y) + 1).min(grid.cells_y);
 
     // Check each cell in the bounding box
     for grid_y in grid_min_y..grid_max_y {
@@ -30,15 +30,10 @@ pub fn apply_polygon_obstacle(grid: &mut Grid, points: &[[f64; 2]]) {
 }
 
 /// Check if a grid cell is inside the polygon
-fn is_cell_in_polygon(
-    grid: &Grid,
-    grid_x: usize,
-    grid_y: usize,
-    points: &[[f64; 2]],
-) -> bool {
+fn is_cell_in_polygon(grid: &Grid, grid_x: usize, grid_y: usize, points: &[[f64; 2]]) -> bool {
     // Get the center point of the cell
 
-    let (cell_x, cell_y) = grid.grid_to_coordinate(grid_x, grid_y);
+    let (cell_x, cell_y) = grid.grid_to_world_coordinate(grid_x, grid_y);
     let cell_center_x = cell_x + grid.cell_size / 2.0;
     let cell_center_y = cell_y + grid.cell_size / 2.0;
 

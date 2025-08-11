@@ -29,7 +29,7 @@ fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &m
         loop {
             model.start_x = rng.random_range(model.radius..(model.grid_width - model.radius));
             model.start_y = rng.random_range(model.radius..(model.grid_height - model.radius));
-            if !model.grid.as_ref().unwrap().collision_with_obstacle(
+            if !model.grid.as_mut().unwrap().collision_with_obstacle(
                 model.start_x,
                 model.start_y,
                 model.radius,
@@ -128,6 +128,8 @@ fn main() {
         model.grid_cells_y,
         model.cell_size,
     ));
+
+    model.grid.as_mut().unwrap().use_quad_tree = args.use_quad_tree;
 
     try_apply_mapfile_to_model(&mut model);
 

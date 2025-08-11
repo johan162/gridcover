@@ -109,6 +109,8 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `-D, --dpi <DPI>`  DPI setting for image output
 - `-G, --show-gridlines <True/False>`  Show or hide gridlines in output image
 - `--color-theme <COLOR-THEME>`  Color theme for output image, can be one of: 'default', 'green30', 'blue', 'orange_red', 'gray_green', 'pure_green'.
+- `show-quad-tree <True/False>` Shows the spatial index that is built as a quad-tree in the image
+- `show_image_label <True/False>` Shows the image label with sim-time and coverage in the top-left corner of the image
 
 ## Animation & Video
 - `-f, --generate-frames <True/False>`  Generate frames for an animation
@@ -129,8 +131,15 @@ Below is a categorized list of all command line options for **gridcover** to hel
 ## Randomness & Reproducibility
 - `-S, --random-seed <RANDOM_SEED>`  Random seed for reproducible results
 
-## Parallelization & Performance
-- `-P, --parallel <True/False>`  **Deprecated**. Use parallel processing to speed up simulation
+## Performance
+- `-P, --parallel <True/False>`  **Deprecated**. Use parallel processing when possible to speed up simulation
+- `--use-quad-tree <True/False>` Use a spatial index based on quad-trees to speed up obstacle collision detection. This give 10-20% speedup
+- `--min-qnode-size <VALUE>` Set minimum quad-tree node size in multiples of cutter radius 
+- `--show-quad-tree <True/False>` Show quad-tree in the output image
+- `--save-quad-tree <True/False>` Save quad-tree to file with the same name as the map-file but with "_index.json" appended to the basename
+
+## Help & Version
+
 
 ## Configuration Files & Database
 - `--args-write-file-name <ARGS-FILE-NAME>`  Write program arguments file in TOML format
@@ -426,3 +435,140 @@ which tells is that it is roughly 360 s (or 6min) exactly what we wanted. Note: 
 ffmpeg -i cutter_sim_1.mp4 2>&1 | grep Duration
   Duration: 00:06:00.20, start: 0.000000, bitrate: 2778 kb/s
 ```
+
+# Statistics
+
+<table id="scc-table">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+</colgroup>
+<thead>
+<tr>
+<th>Language</th>
+<th>Files</th>
+<th>Lines</th>
+<th>Blank</th>
+<th>Comment</th>
+<th>Code</th>
+<th>Complexity</th>
+<th>Bytes</th>
+<th>Uloc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th>Rust</th>
+<th>23</th>
+<th>5579</th>
+<th>502</th>
+<th>437</th>
+<th>4640</th>
+<th>634</th>
+<th>211732</th>
+<th>0</th>
+</tr>
+<tr>
+<th>Markdown</th>
+<th>5</th>
+<th>1164</th>
+<th>220</th>
+<th>0</th>
+<th>944</th>
+<th>0</th>
+<th>47607</th>
+<th>0</th>
+</tr>
+<tr>
+<th>YAML</th>
+<th>5</th>
+<th>157</th>
+<th>22</th>
+<th>23</th>
+<th>112</th>
+<th>0</th>
+<th>3311</th>
+<th>0</th>
+</tr>
+<tr>
+<th>Shell</th>
+<th>2</th>
+<th>394</th>
+<th>57</th>
+<th>58</th>
+<th>279</th>
+<th>44</th>
+<th>13570</th>
+<th>0</th>
+</tr>
+<tr>
+<th>Makefile</th>
+<th>1</th>
+<th>444</th>
+<th>47</th>
+<th>27</th>
+<th>370</th>
+<th>25</th>
+<th>20854</th>
+<th>0</th>
+</tr>
+<tr>
+<th>Python</th>
+<th>1</th>
+<th>136</th>
+<th>21</th>
+<th>30</th>
+<th>85</th>
+<th>28</th>
+<th>5758</th>
+<th>0</th>
+</tr>
+<tr>
+<th>TOML</th>
+<th>1</th>
+<th>33</th>
+<th>2</th>
+<th>0</th>
+<th>31</th>
+<th>0</th>
+<th>699</th>
+<th>0</th>
+</tr>
+&#10;</tbody><tfoot>
+<tr>
+<td>Total</td>
+<td>38</td>
+<td>7907</td>
+<td>871</td>
+<td>575</td>
+<td>6461</td>
+<td>731</td>
+<td>303531</td>
+<td>0</td>
+</tr>
+<tr>
+<td colspan="9">Estimated Cost to Develop (organic) $191,606<br />
+Estimated Schedule Effort (organic) 7.34 months<br />
+Estimated People Required (organic) 2.32<br />
+</td>
+</tr>
+</tfoot>
+&#10;</table>
+
+# Example Commands
+
+```sh
+./target/release/gridcover -M assets/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 1 --use-quad-tree true -s 0.01
+```
+
+```sh
+./target/release/gridcover -M assets/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 2 --use-quad-tree false -s 0.01 | grep -e "Collision Checks" -e "CPU"
+```
+

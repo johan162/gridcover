@@ -1,10 +1,10 @@
 [package]
 name = "gridcover"
-version = "2.2.0"
+version = "2.3.0-beta"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.41", features = ["derive"] }
+clap = { version = "4.5.43", features = ["derive"] }
 rand = "0.9.2"
 colored = "3.0.0"
 chrono = "0.4.41"
@@ -12,15 +12,18 @@ thousands = "0.2.0"
 image = "0.25.6"
 rayon = "1.10"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 serde_yaml = "0.9.33"
-toml = "0.9.2"
+toml = "0.9.5"
 toml_write = "0.1.2"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 num_cpus = "1.16.0"
 shell-words = "1.1.0"
 indicatif = "0.18.0"
 glob = "0.3.2"
+imageproc = { version = "0.25.0", default-features = false }
+ab_glyph = "0.2"
+rusttype = "0.9"
 
 [profile.release]
 opt-level = 3

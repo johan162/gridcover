@@ -16,3 +16,8 @@ frames_dir
 .DS_Store
 .idea
 *.sqlite*
+*.ttf
+*.otf
+*.html
+scripts/*.rs
+docs/scc.md

@@ -104,9 +104,6 @@ pub fn load_optional_mapfile(args: &args::Args, model: &mut SimModel) {
                     if let Some(height) = grid_config.height {
                         model.grid_height = height;
                     }
-                    // if let Some(cell_size) = grid_config.cell_size {
-                    //     model.cell_size = cell_size;
-                    // }
                 }
                 if let Err(e) = setup_grid_size(model) {
                     eprintln!(
@@ -129,10 +126,60 @@ pub fn load_optional_mapfile(args: &args::Args, model: &mut SimModel) {
 
 pub fn try_apply_mapfile_to_model(model: &mut SimModel) {
     // Load map file if specified
-    if let Some(map) = &model.map_file {
-        apply_obstacles_to_grid(model.grid.as_mut().unwrap(), map);
-        model.grid.as_mut().unwrap().update_obstacle_count();
-        model.grid_cells_obstacles_count = model.grid.as_ref().unwrap().get_obstacle_count();
-        model.num_obstacles = map.obstacles.len();
+    if let Some(map_file) = &model.map_file {
+        apply_obstacles_to_grid(model.grid.as_mut().unwrap(), map_file);
+        model.grid.as_mut().unwrap().update_obstacle_cells_count();
+        model.num_obstacles = map_file.obstacles.len();
+
+        // Build the spatial index which is a quad-tree
+        if model.verbosity > 1 && !model.quiet {
+            print!(
+                "{}",
+                format!(
+                    "Building quad-tree for {} obstacles ...",
+                    model.num_obstacles
+                )
+                .color(colored::Color::Green)
+                .bold()
+            );
+        }
+        // Time the building of the quad-tree
+        let start_time = std::time::Instant::now();
+        model
+            .grid
+            .as_mut()
+            .expect("Failed to get grid")
+            .init_spatial_index(model.radius, model.min_qnode_size);
+
+        let elapsed = start_time.elapsed();
+        if model.verbosity > 1 && !model.quiet {
+            println!(
+                "{}",
+                format!("done. Quad-tree built in {elapsed:.4?}",)
+                    .color(colored::Color::Green)
+                    .bold()
+            );
+        }
+
+        if model.save_quad_tree {
+            // Save the quad-tree to a file
+            let index_file = model.map_file_name.as_ref().unwrap().replace(".yaml", "_index.json");
+            if model.verbosity > 1 && !model.quiet {
+                print!(
+                    "{}",
+                    format!("Saving spatial index to \"{index_file}\".")
+                        .color(colored::Color::Green)
+                        .bold()
+                );
+            }
+            if let Err(e) = model.grid.as_ref().unwrap().save_spatial_index(index_file) {
+                eprintln!(
+                    "{}",
+                    format!("Failed to save spatial index: {e}")
+                        .color(colored::Color::Red)
+                        .bold()
+                );
+            }
+        }
     }
 }

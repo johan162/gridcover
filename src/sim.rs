@@ -193,7 +193,7 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
         if !collision_detected
             && model
                 .grid
-                .as_ref()
+                .as_mut()
                 .expect(ERROR_MSG)
                 .collision_with_obstacle(cutter_center.x, cutter_center.y, model.radius)
         {

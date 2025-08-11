@@ -1,0 +1,40 @@
+# Example map file for GridCover
+name: "My Backyard"
+description: "A backyard with a pond and patio"
+
+grid:
+  width: 25 
+  height: 50 
+
+obstacles:
+  # Rectangle obstacles (x, y are bottom-left coordinates)
+  - type: rectangle
+    x: 5
+    y: 5
+    width: 8
+    height: 10
+    name: "Patio"
+    
+  # Circle obstacles (x, y are center coordinates)
+  - type: circle
+    x: 5
+    y: 30
+    radius: 3
+    name: "Pond"
+ 
+  # Polygon obstacles (defined by a series of points)
+  - type: polygon
+    points:
+      - [20, 45]
+      - [15, 35]
+      - [20, 25]
+      - [15, 15]
+    name: "Flower Bed"
+    
+  # Line obstacles (useful for narrow barriers like fences)
+  - type: line
+    points:
+      - [0.1, 47]
+      - [10, 47]
+    width: 0.2
+    name: "Fence"

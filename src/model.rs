@@ -15,6 +15,7 @@ pub mod coverageinfo;
 pub mod cuttertype;
 pub mod grid;
 pub mod papersize;
+pub mod quadtree;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -97,6 +98,11 @@ pub struct SimModel {
     pub wheel_inbalance_radius_used: f64,
     pub wheel_inbalance_adjustment_step: f64,
     pub random_seed: u64,
+    pub show_quad_tree: bool,
+    pub min_qnode_size: f64,
+    pub use_quad_tree: bool,
+    pub save_quad_tree: bool,
+    pub show_image_label: bool,
 }
 
 // Define a constant for the simulation step size factor
@@ -163,6 +169,11 @@ impl SimModel {
         wheel_inbalance_radius_max: f64,
         wheel_inbalance_adjustment_step: f64,
         random_seed: u64,
+        show_quad_tree: bool,
+        min_qnode_size: f64,
+        use_quad_tree: bool,
+        save_quad_tree: bool,
+        show_image_label: bool,
     ) -> Self {
         Self {
             start_x,
@@ -243,6 +254,11 @@ impl SimModel {
             wheel_inbalance_adjustment_step,
             wheel_inbalance_radius_used: 0.0,
             random_seed,
+            show_quad_tree,
+            min_qnode_size,
+            use_quad_tree,
+            save_quad_tree,
+            show_image_label,
         }
     }
 
@@ -304,6 +320,11 @@ impl SimModel {
             args.wheel_inbalance_radius_max,
             args.wheel_inbalance_adjustment_step,
             args.random_seed,
+            args.show_quad_tree,
+            args.min_qnode_size,
+            args.use_quad_tree,
+            args.save_quad_tree,
+            args.show_image_label,
         )
     }
 
@@ -385,6 +406,8 @@ impl SimModel {
                         "Percent": (self.grid_cells_obstacles_count as f64
                             / (self.grid_cells_x * self.grid_cells_y) as f64)
                             * 100.0,
+                        "Min Quad Node Size": self.min_qnode_size,
+                        "Collision Checks": self.grid.as_ref().unwrap().num_detailed_collision_checks,
                     },
                 },
                 "Image" : {
@@ -759,6 +782,11 @@ pub fn init_model(
             model.slippage_radius_min, model.slippage_radius_max
         )
         .into());
+    }
+
+    // Verify that spatial index is enabled if the index should be shown in the image
+    if model.show_quad_tree && !model.use_quad_tree {
+        return Err("Quad tree visualization is enabled but quad tree is not used. Please enable quad tree usage with --use-quad-tree true".into());
     }
 
     // Check that any explicitly specified color theme actually exists

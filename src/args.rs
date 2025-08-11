@@ -348,7 +348,7 @@ pub struct Args {
     pub animation_file_name: String,
 
     /// Animation speedup factor
-    #[arg(long, short = 'U', default_value_t = 6, value_name = "ANIMATION-SPEEDUP-FACTOR")]
+    #[arg(long, short = 'U', default_value_t = 25, value_name = "ANIMATION-SPEEDUP-FACTOR")]
     pub animation_speedup: u64,
 
     /// Use HW assisted encoding for the animation. This is only available on macOS and Linux
@@ -473,6 +473,35 @@ pub struct Args {
         })
     )]
     pub wheel_inbalance_adjustment_step: f64,
+
+    /// Show the quad-tree structure in the output image
+    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    pub show_quad_tree: bool,
+
+    /// Min quad tree node size in multiples of cutter radius
+    #[arg(long, default_value_t = 8.0,
+        value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+            let val: f64 = s.parse().map_err(|_| "Not a valid min qnode size value".to_string())?;
+            if val >= 3.0 && val <= 30.0 {
+                Ok(val)
+            } else {
+                Err(format!("Min quad node size must be between 3.0 and 30.0 times the radius, got {}", val))
+            }
+        })
+    )]
+    pub min_qnode_size: f64,
+
+    /// Enable the use of a quad-tree for faster collision detection
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    pub use_quad_tree: bool,
+
+    /// Save the quad-tree structure to a file with name based on the map file name
+    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    pub save_quad_tree: bool,
+
+    /// Decide if label with sim-time and coverage should be added to the output image
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    pub show_image_label: bool,
 }
 
 
@@ -540,6 +569,11 @@ impl Args {
             wheel_inbalance_radius_min: if self.wheel_inbalance_radius_min != 40.0 { self.wheel_inbalance_radius_min } else { other.wheel_inbalance_radius_min },
             wheel_inbalance_radius_max: if self.wheel_inbalance_radius_max != 150.0 { self.wheel_inbalance_radius_max } else { other.wheel_inbalance_radius_max },
             wheel_inbalance_adjustment_step: if self.wheel_inbalance_adjustment_step != 0.2 { self.wheel_inbalance_adjustment_step } else { other.wheel_inbalance_adjustment_step },
+            show_quad_tree: if self.show_quad_tree { self.show_quad_tree } else { other.show_quad_tree },
+            min_qnode_size: if self.min_qnode_size != 8.0 { self.min_qnode_size } else { other.min_qnode_size },
+            use_quad_tree: if self.use_quad_tree { self.use_quad_tree } else { other.use_quad_tree },
+            save_quad_tree: if self.save_quad_tree { self.save_quad_tree } else { other.save_quad_tree },
+            show_image_label: if self.show_image_label { self.show_image_label } else { other.show_image_label },
         }
     }
 }
