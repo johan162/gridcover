@@ -4,7 +4,7 @@ version = "2.3.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.43", features = ["derive"] }
+clap = { version = "4.5.44", features = ["derive"] }
 rand = "0.9.2"
 colored = "3.0.0"
 chrono = "0.4.41"
@@ -20,7 +20,7 @@ rusqlite = { version = "0.37.0", features = ["bundled"] }
 num_cpus = "1.16.0"
 shell-words = "1.1.0"
 indicatif = "0.18.0"
-glob = "0.3.2"
+glob = "0.3.3"
 imageproc = { version = "0.25.0", default-features = false }
 ab_glyph = "0.2"
 rusttype = "0.9"
