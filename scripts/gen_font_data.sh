@@ -8,13 +8,15 @@
 set -u
 
 # Static configuration constants for the script
-readonly SCRIPT_VERSION="1.0"
+readonly SCRIPT_VERSION="1.1"
 readonly DEJAVU_VERSION="2.37"
 readonly _DEJAVU_VERSION=${DEJAVU_VERSION//./_}
 readonly DEJAVU_URL="https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_${_DEJAVU_VERSION}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2"
 readonly DEFAULT_COLUMNS=80
 readonly MIN_COLUMNS=10
 readonly MAX_COLUMNS=100
+
+# This assumes we are executing from the "./scripts" directory
 readonly FONT_DIR="../assets/fonts"
 readonly DEFAULT_OUTPUT_DIR="../src/image"
 
@@ -23,14 +25,14 @@ readonly DEFAULT_OUTPUT_DIR="../src/image"
 # The font files are downloaded from the DejaVu Fonts repository if they are not present.
 readonly DEJAVU_TTF_FONTS=("DejaVuSans.ttf" "DejaVuSans-Bold.ttf")
 
-# The name of the Rust font files and the name of the variables they define will be dynamically
-# created based on the TTF font file names. See the function `create_rust_variable_name`.
-declare -a RUST_FONT_FILES
-declare -a RUST_VARIABLES
-
 # ============================================================
 # No need to edit below this line
 # ============================================================
+
+# The name of the Rust font files and the name of the variables they define will be dynamically
+# created based on the TTF font file names. See the function `create_rust_variable_name`.
+declare -a RUST_FONT_FILES=()
+declare -a RUST_VARIABLES=()
 
 # Default global variables for the options given to the script
 verbose=false
@@ -49,6 +51,7 @@ create_rust_variable_name() {
 setup_rust_font_file_and_variable_names() {
     # Create the Rust static variable name for the Rust font data file from the ttf font file name
     # Example: DejaVuSans.ttf -> DEJAVUSANS
+    local -i i
     for i in "${!DEJAVU_TTF_FONTS[@]}"; do
         RUST_VARIABLES[$i]=$(create_rust_variable_name "${DEJAVU_TTF_FONTS[$i]}")
     done
@@ -161,19 +164,10 @@ verify_options() {
     fi
 }
 
-# Dump a hex representation of the font file and convert it to a Rust static array.
-convert_fontfile_to_rust_data_array() {
+make_rust_hex_dump() {
     local input_file=$1
     local output_file=$2
     local var_name=$3
-
-    # Check if the input file exists
-    if [[ ! -f "$input_file" ]]; then
-        log "ERROR" "Input file \"$input_file\" does not exist."
-        exit 1
-    fi
-
-    log "INFO" "Converting \"$input_file\" to \"$output_file\"..."
 
     # Create hex dump and convert the C-style array to Rust static array format
     xxd -i -c "$columns" "$input_file" |
@@ -190,6 +184,24 @@ convert_fontfile_to_rust_data_array() {
         log "ERROR" "Failed to convert \"$input_file\" to \"$output_file\"."
         exit 1
     fi
+
+}
+
+# Dump a hex representation of the font file and convert it to a Rust static array.
+make_rust_hex_dump_with_check() {
+    local input_file=$1
+    local output_file=$2
+    local var_name=$3
+
+    # Check if the input file exists
+    if [[ ! -f "$input_file" ]]; then
+        log "ERROR" "Input file \"$input_file\" does not exist."
+        exit 1
+    fi
+
+    log "INFO" "Converting \"$input_file\" to \"$output_file\"..."
+
+    make_rust_hex_dump "$input_file" "$output_file" "$var_name"
 
     log "INFO" "Font Conversion complete. \"$output_file\" created."
 }
@@ -258,7 +270,7 @@ download_and_install_fonts() {
 install_or_skip_unchanged_files() {
     for file in "${RUST_FONT_FILES[@]}"; do
         if cmp -s "${file}" "${output_dir}/${file}"; then
-            log "NOTICE" "New font file \"${file}\" is the same as existing \"${output_dir}/${file}\". Skipping update."
+            log "NOTICE" "New font file \"${file}\" is the same as existing \"${output_dir}/${file}\"."
         else
             mv "${file}" "${output_dir}/${file}"
             if [[ $? -ne 0 ]]; then
@@ -315,7 +327,7 @@ main() {
     # Create the Rust static data file for each font file
     # This is a static data array corresponding to the TTF font file
     for i in "${!DEJAVU_TTF_FONTS[@]}"; do
-        convert_fontfile_to_rust_data_array "${FONT_DIR}/${DEJAVU_TTF_FONTS[$i]}" "${RUST_FONT_FILES[$i]}" "${RUST_VARIABLES[$i]}"
+        make_rust_hex_dump_with_check "${FONT_DIR}/${DEJAVU_TTF_FONTS[$i]}" "${RUST_FONT_FILES[$i]}" "${RUST_VARIABLES[$i]}"
     done
 
     # See if we should update the existing data files. We only do this if the files are different
@@ -329,7 +341,7 @@ main() {
     if [[ "$update" = true ]]; then
         log "SUCCESS" "Done. Rust font data files successfully updated under \"$output_dir\"."
     else
-        log "SUCCESS" "Done. No updates were necessary. Rust font data files are already up to date."
+        log "SUCCESS" "Done. No updates necessary. Rust font data files are already up to date."
     fi
 
     exit 0

@@ -198,11 +198,11 @@ impl Grid {
 
     /// Check if there is an obstacle in a bounding box determined by the given radius around the given center point.
     #[allow(clippy::collapsible_if)]
-    pub fn collision_with_obstacle(&mut self, center_x: f64, center_y: f64, radius: f64) -> bool {
+    pub fn collision_with_obstacle(&mut self, center: &Vector, radius: f64) -> bool {
         // First check the spatial index if available
         if self.use_quad_tree {
             if let Some(quad_tree) = &self.quadtree {
-                if !quad_tree.might_have_collision(center_x, center_y, radius) {
+                if !quad_tree.might_have_collision(center.x, center.y, radius) {
                     return false; // No collision possible in this area
                 }
             }
@@ -213,8 +213,8 @@ impl Grid {
         // If no spatial index or quad-tree indicates possible collision,
         // perform detailed collision check
         let grid_radius = (radius / self.cell_size).ceil() as i32;
-        let grid_center_x = self.world_coordinate_to_grid_x(center_x) as i32;
-        let grid_center_y = self.world_coordinate_to_grid_y(center_y) as i32;
+        let grid_center_x = self.world_coordinate_to_grid_x(center.x) as i32;
+        let grid_center_y = self.world_coordinate_to_grid_y(center.y) as i32;
 
         for dx in -grid_radius..=grid_radius {
             for dy in -grid_radius..=grid_radius {

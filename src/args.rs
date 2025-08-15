@@ -368,7 +368,7 @@ pub struct Args {
     pub wheel_slippage: bool,
 
     /// Slippage probability per slippage_activation_check_distance
-    #[arg(long, default_value_t = 0.03,
+    #[arg(long, default_value_t = 0.1,
         value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
             let val: f64 = s.parse().map_err(|_| "Not a valid slippage probability value".to_string())?;
             if val >= 0.0 && val <= 1.0 {
@@ -381,21 +381,35 @@ pub struct Args {
     pub slippage_probability: f64,
 
     /// Slippage activation min distance in units
-    #[arg(long, default_value_t = 20.0)]
+    #[arg(long, default_value_t = 20.0, value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+        let val: f64 = s.parse().map_err(|_| "Not a valid slippage min distance value".to_string())?;
+        if val >= 1.0 {
+            Ok(val)
+        } else {
+            Err(format!("Slippage min distance must be non-negative, got {}", val))
+        }
+    }))]
     pub slippage_min_distance: f64,
 
     /// Slippage activation max distance in units
-    #[arg(long, default_value_t = 100.0)]
+    #[arg(long, default_value_t = 200.0, value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
+        let val: f64 = s.parse().map_err(|_| "Not a valid slippage max distance value".to_string())?;
+        if val >= 1.0 {
+            Ok(val)
+        } else {
+            Err(format!("Slippage max distance must be non-negative, got {}", val))
+        }
+    }))]
     pub slippage_max_distance: f64,
 
     /// Slippage min angle in degrees to adjust as slippage per defined steps
     #[arg(long, default_value_t = 5.0,
         value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
             let val: f64 = s.parse().map_err(|_| "Not a valid slippage radius min value".to_string())?;
-            if val >= 1.0 && val <= 40.0 {
+            if val >= 1.0 && val <= 50.0 {
                 Ok(val)
             } else {
-                Err(format!("Slippage radius min must be between 1.0 and 40.0, got {}", val))
+                Err(format!("Slippage radius min must be between 1.0 and 50.0, got {}", val))
             }
         })
     )]
@@ -436,7 +450,7 @@ pub struct Args {
     pub wheel_inbalance: bool,
 
     /// We model wheel inbalance as the cutter turning in a random radius between a min/max value
-    #[arg(long, default_value_t = 40.0,
+    #[arg(long, default_value_t = 20.0,
         value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
             let val: f64 = s.parse().map_err(|_| "Not a valid wheel inbalance radius min value".to_string())?;
             if val >= 1.0 && val <= 1000.0 {
@@ -449,7 +463,7 @@ pub struct Args {
     pub wheel_inbalance_radius_min: f64,
 
     /// We model wheel inbalance as the cutter turning in a random radius between a min/max value
-    #[arg(long, default_value_t = 150.0,
+    #[arg(long, default_value_t = 100.0,
         value_parser = clap::builder::ValueParser::new(|s: &str| -> Result<f64, String> {
             let val: f64 = s.parse().map_err(|_| "Not a valid wheel inbalance radius max value".to_string())?;
             if val >= 1.0 && val <= 1000.0 {

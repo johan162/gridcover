@@ -40,7 +40,7 @@ pub fn cutter_strategy(
     collision_detected: bool,
     model: &mut SimModel,
     rng: &mut impl Rng,
-) -> (f64, f64) {
+) -> Vector {
     match collision_detected {
         false => {
             let (mut dir_x, mut dir_y) = (current_dir.x, current_dir.y);
@@ -66,12 +66,12 @@ pub fn cutter_strategy(
                 }
             }
 
-            (dir_x, dir_y)
+            Vector::new(dir_x, dir_y)
         }
         true => {
             let (dir_x, dir_y) = collision_strategy(model, current_dir, cutter_center_pos, rng);
-            
-            (dir_x, dir_y)
+
+            Vector::new(dir_x, dir_y)
         }
     }
 }

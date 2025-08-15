@@ -21,6 +21,7 @@ use rand::Rng;
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
 use video::try_video_encoding;
+use vector::Vector;
 
 fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &mut SimModel) {
     // Check if we should randomize the start position
@@ -29,11 +30,8 @@ fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &m
         loop {
             model.start_x = rng.random_range(model.radius..(model.grid_width - model.radius));
             model.start_y = rng.random_range(model.radius..(model.grid_height - model.radius));
-            if !model.grid.as_mut().unwrap().collision_with_obstacle(
-                model.start_x,
-                model.start_y,
-                model.radius,
-            ) {
+            let model_start = Vector::new(model.start_x, model.start_y);
+            if !model.grid.as_mut().unwrap().collision_with_obstacle(&model_start, model.radius) {
                 break;
             }
             counter += 1;

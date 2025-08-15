@@ -1,24 +1,31 @@
+// NOTE: This container needs AT LEAST 8GB for the VM running the container
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/rust
 {
 	"name": "Rust (Fedora)",
 	"image": "fedora:42",
 	"features": {
-		"ghcr.io/devcontainers/features/rust:1": {}
+		"ghcr.io/devcontainers/features/rust:1": {
+			"version": "stable",
+			"profile": "default"
+		}
 	},
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "dnf install -y rpm-build; dnf install -y rpmdevtools; dnf copr enable -y lihaohong/scc && dnf install -y scc && rustup update stable",
-	// Configure tool-specific properties.
+	// We use this to install rpm-dev tools so we can build RPM packages, install xxd so 
+	// we can create the embedded font files, and finally scc to get statistics and dev-effort 
+	// estimations to be included in the README
+	"postCreateCommand": "dnf install -y rpm-build; dnf install -y rpmdevtools xxd; dnf copr enable -y lihaohong/scc && dnf install -y scc",
+	// Note: The Rust feature already installs the following vs-code extensions:
+	// - "vadimcn.vscode-lldb",
+	// - "tamasfe.even-better-toml",
+	// - "rust-lang.rust-analyzer",
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"rust-lang.rust-analyzer",
-				"vadimcn.vscode-lldb",
 				"usernamehw.errorlens",
 				"ms-vscode.makefile-tools",
 				"gxl.git-graph-3",
 				"fill-labs.dependi",
-				"tamasfe.even-better-toml",
 				"gruntfuggly.todo-tree",
 				"redhat.vscode-yaml",
 				"github.copilot",

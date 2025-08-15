@@ -84,10 +84,10 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `--slippage-adjustment-step <LENGTH>` Step size for wheel slippage adjustment
 
 ## Wheel inbalance
-- `wheel-inbalance <True/False>` Enable wheel inbalance
-- `wheel-inbalance-radius-min <RADIUS>` Minimum turning radius to model inbalance
-- `wheel-inbalance-radius-max <RADIUS>` Maximum turning radius to model inbalance
-- `wheel-inbalance-adjustment-step` Step size for wheel inbalance adjustment
+- `--wheel-inbalance <True/False>` Enable wheel inbalance
+- `--wheel-inbalance-radius-min <RADIUS>` Minimum turning radius to model inbalance
+- `--wheel-inbalance-radius-max <RADIUS>` Maximum turning radius to model inbalance
+- `--wheel-inbalance-adjustment-step` Step size for wheel inbalance adjustment
 
 ## Simulation Control & Stopping Conditions
 - `-z, --step-size <STEP_SIZE>`  Simulation step size in units, automatically determined if not specified
@@ -565,10 +565,10 @@ Estimated People Required (organic) 2.32<br />
 # Example Commands
 
 ```sh
-./target/release/gridcover -M assets/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 1 --use-quad-tree true -s 0.01
+./target/release/gridcover -M assets/maps/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 1 --use-quad-tree true -s 0.01
 ```
 
 ```sh
-./target/release/gridcover -M assets/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 2 --use-quad-tree false -s 0.01 | grep -e "Collision Checks" -e "CPU"
+./target/release/gridcover -M assets/maps/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 2 --use-quad-tree false -s 0.01 | grep -e "Collision Checks" -e "CPU"
 ```
 

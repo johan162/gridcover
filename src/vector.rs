@@ -6,6 +6,12 @@ pub struct Vector {
     pub y: f64,
 }
 
+impl Vector {
+    pub fn new(x: f64, y: f64) -> Self {
+        Vector { x, y }
+    }
+}
+
 impl Add for Vector {
     type Output = Vector;
 

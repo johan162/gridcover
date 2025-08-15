@@ -67,7 +67,7 @@ OUTPUT_RPM_NAME := "$(APP_NAME_PKG)-$(APP_VERSION_PKG_RPM)-$(RPM_RELEASE).x86_64
 ## Setup PHONY targets for better readability and to avoid conflicts with file names
 .PHONY: help, all, all-bin, clean, b, br, test, r, rr, lint, fmt, cov-html, cov, \
 tst-pkg, pkg, pkg-intel, pkg-arm, win-exe, rpm, b-linux, br-linux, bump, install-pkg, \
-uninstall-pkg, uninstall-pkg, check, fonts
+uninstall-pkg, uninstall-pkg, check, fonts, scc
 
 .DEFAULT_GOAL := b ## Build debug version
 
