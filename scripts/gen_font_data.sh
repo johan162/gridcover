@@ -44,7 +44,8 @@ font_dir="${FONT_DIR}"
 
 create_rust_variable_name() {
     local font_file=$1
-    local base_name=$(basename "$font_file" .ttf)
+    local base_name
+    base_name=$(basename "$font_file" .ttf)
     echo "${base_name//-/_}" | tr '[:lower:]' '[:upper:]'
 }
 
@@ -53,20 +54,18 @@ setup_rust_font_file_and_variable_names() {
     # Example: DejaVuSans.ttf -> DEJAVUSANS
     local -i i
     for i in "${!DEJAVU_TTF_FONTS[@]}"; do
-        RUST_VARIABLES[$i]=$(create_rust_variable_name "${DEJAVU_TTF_FONTS[$i]}")
+        RUST_VARIABLES[i]=$(create_rust_variable_name "${DEJAVU_TTF_FONTS[$i]}")
     done
 
     # Create the Rust file names from the TTF font file names
     # Example: DejaVuSans.ttf -> font_dejavusans.rs
     for i in "${!DEJAVU_TTF_FONTS[@]}"; do
         name_without_underscore=${RUST_VARIABLES[$i]//_/}
-        RUST_FONT_FILES[$i]=$(echo "font_${name_without_underscore}.rs" | tr '[:upper:]' '[:lower:]')
+        RUST_FONT_FILES[i]=$(echo "font_${name_without_underscore}.rs" | tr '[:upper:]' '[:lower:]')
     done
 }
 
 # Some color codes for output
-readonly Blue="\033[34m"
-readonly BlueBold="\033[1;34m"
 readonly Green="\033[32m"
 readonly GreenBold="\033[1;32m"
 readonly Cyan="\033[36m"
@@ -80,7 +79,7 @@ readonly YellowBold="\033[1;33m"
 readonly ResetColor="\033[0m"
 
 check_dependencies() {
-    local missing=()
+    local -a missing=()
 
     command -v xxd >/dev/null || missing+=("xxd")
     command -v curl >/dev/null || missing+=("curl")
@@ -110,6 +109,7 @@ EOF
 }
 
 # Add trap for cleanup
+# shellcheck disable=SC2329
 cleanup() {
     [[ -n "${temp_dir:-}" ]] && [[ -d "$temp_dir" ]] && rm -rf "$temp_dir"
 }
@@ -151,9 +151,9 @@ read_options() {
 }
 
 verify_options() {
-    # Check if columns is a positive integer between 10 and 100
-    if ! [[ "$columns" =~ ^[1-9][0-9]?$|^100$ ]]; then
-        log "ERROR" "-c option must be a positive integer between 10 and 100."
+    # Check if columns is a positive integer between MIN_COLUMNS and MAX_COLUMNS
+    if ! [[ "$columns" -ge "$MIN_COLUMNS" && "$columns" -le "$MAX_COLUMNS" ]]; then
+        log "ERROR" "-c option must be a positive integer between $MIN_COLUMNS and $MAX_COLUMNS."
         exit 1
     fi
 
@@ -177,9 +177,10 @@ make_rust_hex_dump() {
         sed "s/{/\&[/g" |
         sed "s/}/]/g" |
         sed "s/_len/_LEN : usize/g" |
-        sed "s/$(echo ${input_file} | tr '.\-/' '_')/$var_name/g" |
+        sed "s/$(echo "${input_file}" | tr '.\-/' '_')/$var_name/g" |
         awk '/pub static/{print "// DO NOT EDIT! Created automatically by gen_font_data.sh\n#[allow(dead_code)]"}1' >"$output_file"
 
+    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to convert \"$input_file\" to \"$output_file\"."
         exit 1
@@ -215,12 +216,14 @@ download_and_install_fonts() {
 
     log "NOTICE" "No installed fonts found. Will download DejaVu fonts to \"$font_dir\"."
     mkdir -p "$font_dir"
+    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to create font directory \"$font_dir\"."
         exit 1
     fi
 
     temp_dir=$(mktemp -d)
+    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to create temporary directory."
         exit 1
@@ -228,6 +231,7 @@ download_and_install_fonts() {
 
     # Download the font package from the DejaVu Fonts repository
     curl -s -L -o "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" "${DEJAVU_URL}"
+    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to download DejaVu Fonts package from ${DEJAVU_URL}."
         exit 1
@@ -235,6 +239,7 @@ download_and_install_fonts() {
     log "INFO" "DejaVu fonts package downloaded successfully."
 
     tar -xjf "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" -C "${temp_dir}"
+    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to extract DejaVu Fonts package."
         exit 1
@@ -247,6 +252,7 @@ download_and_install_fonts() {
             exit 1
         fi
         cp "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}/ttf/${ttf_file}" "${font_dir}/${ttf_file}"
+        # shellcheck disable=SC2181
         if [[ $? -ne 0 ]]; then
             log "ERROR" "Failed to copy \"$ttf_file\" to \"$font_dir\"."
             exit 1
@@ -256,6 +262,7 @@ download_and_install_fonts() {
 
     # Clean up the temporary files
     rm -rf "${temp_dir}"
+    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to clean up temporary directory."
         exit 1
@@ -264,7 +271,7 @@ download_and_install_fonts() {
         log "INFO" "Temporary files cleaned up."
     fi
 
-    log "SUCCESS" "Font files \"${ttf_font_files[@]}\" installed in \"$font_dir\"."
+    log "SUCCESS" "Font files \"${ttf_font_files[*]}\" installed in \"$font_dir\"."
 }
 
 install_or_skip_unchanged_files() {
@@ -273,6 +280,7 @@ install_or_skip_unchanged_files() {
             log "NOTICE" "New font file \"${file}\" is the same as existing \"${output_dir}/${file}\"."
         else
             mv "${file}" "${output_dir}/${file}"
+            # shellcheck disable=SC2181
             if [[ $? -ne 0 ]]; then
                 log "ERROR" "Failed to move \"$file\" to \"$output_dir\"."
                 exit 1
@@ -287,6 +295,7 @@ cleanup_temporary_files() {
     for file in "${RUST_FONT_FILES[@]}"; do
         if [[ -f "$file" ]]; then
             rm "$file"
+            # shellcheck disable=SC2181
             if [[ $? -ne 0 ]]; then
                 log "ERROR" "Failed to remove temporary file \"$file\"."
                 exit 1
@@ -304,9 +313,9 @@ main() {
     setup_rust_font_file_and_variable_names
 
     # Some debugging output
-    # echo "Font files: ${DEJAVU_TTF_FONTS[@]}"
-    # echo "Rust font data files: ${RUST_FONT_FILES[@]}"
-    # echo "Rust variables: ${RUST_VARIABLES[@]}"
+    # echo "Font files: ${DEJAVU_TTF_FONTS[*]}"
+    # echo "Rust font data files: ${RUST_FONT_FILES[*]}"
+    # echo "Rust variables: ${RUST_VARIABLES[*]}"
 
     # Read and verify options given to the script
     read_options "$@"
