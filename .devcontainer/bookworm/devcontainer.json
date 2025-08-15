@@ -1,0 +1,37 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/rust
+{
+	"name": "Rust (Bookworm)",
+	"image": "mcr.microsoft.com/devcontainers/rust:1-1-bookworm",
+	"containerEnv": {
+		"TZ": "Europe/Stockholm",
+		"RUST_BACKTRACE": "full"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"usernamehw.errorlens",
+				"ms-vscode.makefile-tools",
+				"gxl.git-graph-3",
+				"fill-labs.dependi",
+				"gruntfuggly.todo-tree",
+				"redhat.vscode-yaml",
+				"github.copilot",
+				"github.copilot-chat",
+				"bierner.markdown-mermaid",
+				"ms-python.vscode-pylance",
+				"ms-python.python",
+				"ms-python.debugpy",
+				"ms-python.vscode-python-envs",
+				"timonwong.shellcheck"
+			],
+			"settings": {
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.organizeImports": "always"
+				}
+			}
+		}
+	},
+	"postCreateCommand": "rustc --version"
+}
