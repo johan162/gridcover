@@ -11,6 +11,7 @@
 		}
 	},
 	"containerEnv": {
+		// Adjust the timezone as fit and Rust backtrace settings
 		"TZ": "Europe/Stockholm",
 		"RUST_BACKTRACE": "full"
 	},
@@ -18,7 +19,7 @@
 	// We use this to install rpm-dev tools so we can build RPM packages, install xxd so 
 	// we can create the embedded font files, and finally scc to get statistics and dev-effort 
 	// estimations to be included in the README
-	"postCreateCommand": "dnf install -y rpm-build; dnf install -y rpmdevtools xxd; dnf copr enable -y lihaohong/scc && dnf install -y scc",
+	"postCreateCommand": "dnf install -y rpm-build; dnf install -y rpmdevtools xxd; dnf copr enable -y lihaohong/scc && dnf install -y scc; \n\t# Copy repository-provided bash profile into the container user's home if present\n\tif [ -f .devcontainer/dotfiles/.bashrc ]; then cp .devcontainer/dotfiles/.bashrc $HOME/.bashrc || true; fi; ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime",
 	// Note: The Rust feature already installs the following vs-code extensions:
 	// - "vadimcn.vscode-lldb",
 	// - "tamasfe.even-better-toml",
