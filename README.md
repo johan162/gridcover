@@ -127,6 +127,7 @@ Below is a categorized list of all command line options for **gridcover** to hel
 - `--verbosity <VERBOSITY>`  Verbosity during simulation, 0 (default), 1, 2
 - `-R, --show-progress <True/False>`  Show progress bar during simulation
 - `-q, --quiet <True/False>`  Quiet, no output at all
+- `-X, --generate_json_files <True/False>` Regardless of other settings generate `"model.json"` and `"result.json"` in current directory.
 
 ## Randomness & Reproducibility
 - `-S, --random-seed <RANDOM_SEED>`  Random seed for reproducible results

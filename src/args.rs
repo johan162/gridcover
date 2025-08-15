@@ -516,6 +516,11 @@ pub struct Args {
     /// Decide if label with sim-time and coverage should be added to the output image
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     pub show_image_label: bool,
+
+    /// Generate model.json and result.json as two files at end of simulation and
+    /// only print the short version to the console.
+    #[arg(short = 'X', long, default_value_t = false, action = clap::ArgAction::Set)]
+    pub generate_json_files: bool,
 }
 
 
@@ -588,6 +593,7 @@ impl Args {
             use_quad_tree: if self.use_quad_tree { self.use_quad_tree } else { other.use_quad_tree },
             save_quad_tree: if self.save_quad_tree { self.save_quad_tree } else { other.save_quad_tree },
             show_image_label: if self.show_image_label { self.show_image_label } else { other.show_image_label },
+            generate_json_files: if self.generate_json_files { self.generate_json_files } else { other.generate_json_files },
         }
     }
 }

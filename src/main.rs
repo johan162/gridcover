@@ -20,8 +20,8 @@ use model::{SimModel, init_model};
 use rand::Rng;
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
-use video::try_video_encoding;
 use vector::Vector;
+use video::try_video_encoding;
 
 fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &mut SimModel) {
     // Check if we should randomize the start position
@@ -31,7 +31,12 @@ fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &m
             model.start_x = rng.random_range(model.radius..(model.grid_width - model.radius));
             model.start_y = rng.random_range(model.radius..(model.grid_height - model.radius));
             let model_start = Vector::new(model.start_x, model.start_y);
-            if !model.grid.as_mut().unwrap().collision_with_obstacle(&model_start, model.radius) {
+            if !model
+                .grid
+                .as_mut()
+                .unwrap()
+                .collision_with_obstacle(&model_start, model.radius)
+            {
                 break;
             }
             counter += 1;
@@ -177,28 +182,40 @@ fn main() {
         model.ffmpeg_encoding_duration = Some(ffmpeg_encoding_duration);
     }
 
+    if args.generate_json_files {
+        // Set output dir to current working directory
+        let output_dir = std::env::current_dir().unwrap();
+        // Create the model file name by using the string "model.json" in the current directory
+        // Using the PathBuf concatenations
+        let model_filename = output_dir.join("model.json");
+        let results_filename = output_dir.join("result.json");
+
+        model.print_model_as_json(Some(&model_filename.display().to_string()));
+        model.print_simulation_results_as_json(Some(&results_filename.display().to_string()));
+    }
+
     if args.verbosity > 1 {
         if args.json_output {
-            model.print_model_as_json();
+            model.print_model_as_json(None);
         } else {
             println!();
-            model.print_model_txt();
+            model.print_model_txt(None);
         }
     }
 
     if args.verbosity > 0 {
         if args.json_output {
-            model.print_simulation_results_as_json();
+            model.print_simulation_results_as_json(None);
         } else {
             println!();
-            model.print_simulation_results_txt();
+            model.print_simulation_results_txt(None);
         }
     } else if !args.quiet {
         if args.json_output {
-            model.print_simulation_results_short_as_json();
+            model.print_simulation_results_short_as_json(None);
         } else {
             println!();
-            model.print_simulation_results_short_txt();
+            model.print_simulation_results_short_txt(None);
         }
     }
 }

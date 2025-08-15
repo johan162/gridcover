@@ -103,6 +103,7 @@ pub struct SimModel {
     pub use_quad_tree: bool,
     pub save_quad_tree: bool,
     pub show_image_label: bool,
+    pub generate_json_files: bool,
 }
 
 // Define a constant for the simulation step size factor
@@ -174,6 +175,7 @@ impl SimModel {
         use_quad_tree: bool,
         save_quad_tree: bool,
         show_image_label: bool,
+        generate_json_files: bool,
     ) -> Self {
         Self {
             start_x,
@@ -259,6 +261,7 @@ impl SimModel {
             use_quad_tree,
             save_quad_tree,
             show_image_label,
+            generate_json_files,
         }
     }
 
@@ -325,6 +328,7 @@ impl SimModel {
             args.use_quad_tree,
             args.save_quad_tree,
             args.show_image_label,
+            args.generate_json_files,
         )
     }
 
@@ -624,69 +628,90 @@ impl SimModel {
     }
 
     /// Print the simulation results in JSON format to the console
-    pub fn print_simulation_results_as_json(&self) {
+    pub fn print_simulation_results_as_json(&self, file_name: Option<&str>) {
         let json = self.get_simulation_result_as_json();
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+        if let Some(file_name) = file_name {
+            std::fs::write(file_name, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        } else {
+            println!("{}", serde_json::to_string_pretty(&json).unwrap());
+        }
     }
 
     /// Print the simulation results in JSON format to the console
-    pub fn print_simulation_results_short_as_json(&self) {
+    pub fn print_simulation_results_short_as_json(&self, file_name: Option<&str>) {
         let json = self.get_simulation_result_short_as_json();
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+        if let Some(file_name) = file_name {
+            std::fs::write(file_name, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        } else {
+            println!("{}", serde_json::to_string_pretty(&json).unwrap());
+        }
     }
 
     #[allow(dead_code)]
-    pub fn print_model_as_json(&self) {
+    pub fn print_model_as_json(&self, file_name: Option<&str>) {
         let json = self.get_model_as_json();
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+        if let Some(file_name) = file_name {
+            std::fs::write(file_name, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        } else {
+            println!("{}", serde_json::to_string_pretty(&json).unwrap());
+        }
     }
 
     /// Print the simulation results to the console in a human-readable format
     /// by converting the JSON to a label: <value> format.
-    pub fn print_simulation_results_txt(&self) {
+    pub fn print_simulation_results_txt(&self, file_name: Option<&str>) {
         let json = self.get_simulation_result_as_json();
         const ROOT_KEY: &str = "Result";
-        println!("{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
-        println!(
-            "{}",
-            "=".repeat(ROOT_KEY.len())
-                .color(colored::Color::BrightGreen)
-                .bold()
-        );
-
-        json_to_console(&json, ROOT_KEY, 2);
+        if let Some(file_name) = file_name {
+            std::fs::write(file_name, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        } else {
+            println!("{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
+            println!(
+                "{}",
+                "=".repeat(ROOT_KEY.len())
+                    .color(colored::Color::BrightGreen)
+                    .bold()
+            );
+            json_to_console(&json, ROOT_KEY, 2);
+        }
     }
 
     /// Print the simulation results to the console in a human-readable format
     /// by converting the JSON to a label: <value> format.
-    pub fn print_simulation_results_short_txt(&self) {
+    pub fn print_simulation_results_short_txt(&self, file_name: Option<&str>) {
         let json = self.get_simulation_result_short_as_json();
         const ROOT_KEY: &str = "Result";
-        println!("{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
-        println!(
-            "{}",
-            "=".repeat(ROOT_KEY.len())
-                .color(colored::Color::BrightGreen)
-                .bold()
-        );
-
-        json_to_console(&json, ROOT_KEY, 2);
+        if let Some(file_name) = file_name {
+            std::fs::write(file_name, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        } else {
+            println!("{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
+            println!(
+                "{}",
+                "=".repeat(ROOT_KEY.len())
+                    .color(colored::Color::BrightGreen)
+                    .bold()
+            );
+            json_to_console(&json, ROOT_KEY, 2);
+        }
     }
 
     /// Print the model parameters to the console in a human-readable format
     /// by converting the model JSON to a label: <value> format.
-    pub fn print_model_txt(&self) {
+    pub fn print_model_txt(&self, file_name: Option<&str>) {
         let json = self.get_model_as_json();
         const ROOT_KEY: &str = "Model";
-        println!("\n{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
-        println!(
-            "{}",
-            "=".repeat(ROOT_KEY.len())
-                .color(colored::Color::BrightGreen)
-                .bold()
-        );
-
-        json_to_console(&json, ROOT_KEY, 2);
+        if let Some(file_name) = file_name {
+            std::fs::write(file_name, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        } else {
+            println!("\n{}", ROOT_KEY.color(colored::Color::BrightGreen).bold());
+            println!(
+                "{}",
+                "=".repeat(ROOT_KEY.len())
+                    .color(colored::Color::BrightGreen)
+                    .bold()
+            );
+            json_to_console(&json, ROOT_KEY, 2);
+        }
     }
 }
 
