@@ -7,7 +7,6 @@ frames_dir
 *.sqlite3
 *.db
 *.txt
-*.json
 *.log
 *.csv
 *.rs.bk
@@ -21,3 +20,5 @@ frames_dir
 *.html
 scripts/*.rs
 docs/scc.md
+model.json
+result.json
