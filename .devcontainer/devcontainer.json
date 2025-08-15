@@ -10,6 +10,10 @@
 			"profile": "default"
 		}
 	},
+	"containerEnv": {
+		"TZ": "Europe/Stockholm",
+		"RUST_BACKTRACE": "full"
+	},
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// We use this to install rpm-dev tools so we can build RPM packages, install xxd so 
 	// we can create the embedded font files, and finally scc to get statistics and dev-effort 
@@ -34,7 +38,8 @@
 				"ms-python.vscode-pylance",
 				"ms-python.python",
 				"ms-python.debugpy",
-				"ms-python.vscode-python-envs"
+				"ms-python.vscode-python-envs",
+				"timonwong.shellcheck"
 			],
 			"settings": {
 				"editor.formatOnSave": true,
