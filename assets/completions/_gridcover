@@ -1,0 +1,79 @@
+#!/bin/zsh
+# filepath: completions/_gridcover
+
+#compdef gridcover
+
+_gridcover() {
+    local context state line
+    typeset -A opt_args
+    
+    _arguments \
+        '(-W --grid-width)'{-W,--grid-width}'[Width in units of the grid]:width:' \
+        '(-H --grid-height)'{-H,--grid-height}'[Height in units of the grid]:height:' \
+        '(-s --square-size)'{-s,--square-size}'[Size of each grid square]:size:' \
+        '(-M --map-file-name)'{-M,--map-file-name}'[Path to map file with obstacles]:file:_files -g "*.yaml *.yml"' \
+        '(-r --radius)'{-r,--radius}'[Radius of the cutter plate]:radius:' \
+        '(-l --blade-len)'{-l,--blade-len}'[Length of knife blade]:length:' \
+        '(-T --cutter-type)'{-T,--cutter-type}'[Cutter type]:type:(blade circular)' \
+        '(-v --velocity)'{-v,--velocity}'[Movement velocity in units/second]:velocity:' \
+        '(-x --start-x)'{-x,--start-x}'[Starting X coordinate for the cutter]:x:' \
+        '(-y --start-y)'{-y,--start-y}'[Starting Y coordinate for the cutter]:y:' \
+        '--dir-x[Start direction X component]:x:' \
+        '--dir-y[Start direction Y component]:y:' \
+        '(-p --perturb)'{-p,--perturb}'[Use perturbation angle for direction changes]:bool:(true false)' \
+        '(-k --perturb-segment)'{-k,--perturb-segment}'[Use perturbation randomly while moving]:bool:(true false)' \
+        '--perturb-segment-percent[Perturb segment percent chance per cell]:percent:' \
+        '(-C --track-center)'{-C,--track-center}'[Turn visual centerpoint tracking on or off]:bool:(true false)' \
+        '--wheel-slippage[Enable wheel slippage]:bool:(true false)' \
+        '--slippage-probability[Probability slippage may happen]:probability:' \
+        '--slippage-min-distance[Minimum distance slippage will be enabled for]:distance:' \
+        '--slippage-max-distance[Maximum distance slippage will be enabled for]:distance:' \
+        '--slippage-radius-min[The minimum radius to model turning]:radius:' \
+        '--slippage-radius-max[The maximum radius to model turning]:radius:' \
+        '--slippage-check-activation-distance[Interval when we randomly check if there is a slippage]:distance:' \
+        '--slippage-adjustment-step[Step size for wheel slippage adjustment]:step:' \
+        '--wheel-inbalance[Enable wheel inbalance]:bool:(true false)' \
+        '--wheel-inbalance-radius-min[Minimum turning radius to model inbalance]:radius:' \
+        '--wheel-inbalance-radius-max[Maximum turning radius to model inbalance]:radius:' \
+        '--wheel-inbalance-adjustment-step[Step size for wheel inbalance adjustment]:step:' \
+        '(-z --step-size)'{-z,--step-size}'[Simulation step size in units]:size:' \
+        '(-b --stop-bounces)'{-b,--stop-bounces}'[Maximum number of bounces before ending simulation]:bounces:' \
+        '(-t --stop-time)'{-t,--stop-time}'[Maximum simulated time when to stop]:time:' \
+        '(-c --stop-coverage)'{-c,--stop-coverage}'[Stop when reaching this coverage percentage]:percentage:' \
+        '(-m --stop-simsteps)'{-m,--stop-simsteps}'[Stop after specified number of simulation steps]:steps:' \
+        '(-d --stop-distance)'{-d,--stop-distance}'[Stop after specified distance covered]:distance:' \
+        '(-B --battery-run-time)'{-B,--battery-run-time}'[Battery duration in minutes]:minutes:' \
+        '(-A --battery-charge-time)'{-A,--battery-charge-time}'[Battery charging time in minutes]:minutes:' \
+        '-o[Output image file name]:file:_files' \
+        '--image-width-mm[Image output width in mm]:width:' \
+        '--image-height-mm[Image output height in mm]:height:' \
+        '(-Z --paper-size)'{-Z,--paper-size}'[Paper size for output image]:size:(A0 A1 A2 A3 A4 A5 Letter Legal)' \
+        '(-D --dpi)'{-D,--dpi}'[DPI setting for image output]:dpi:' \
+        '(-G --show-gridlines)'{-G,--show-gridlines}'[Show or hide gridlines in output image]:bool:(true false)' \
+        '--color-theme[Color theme for output image]:theme:(default green30 blue orange_red gray_green pure_green)' \
+        '--show-quad-tree[Shows the spatial index that is built as a quad-tree in the image]:bool:(true false)' \
+        '--show-image-label[Shows the image label with sim-time and coverage]:bool:(true false)' \
+        '(-f --generate-frames)'{-f,--generate-frames}'[Generate frames for an animation]:bool:(true false)' \
+        '(-F --frame-rate)'{-F,--frame-rate}'[Specify frame-rate for the animation]:fps:' \
+        '--frames-dir[Directory for animation frames]:directory:_directories' \
+        '(-a --create-animation)'{-a,--create-animation}'[Generate an animation video from the frames]:bool:(true false)' \
+        '--animation-file-name[Animation file name]:file:_files' \
+        '--hw-encoding[Use HW assisted encoding for animation]:bool:(true false)' \
+        '--delete-frames[Delete frames after animation has been created]:bool:(true false)' \
+        '(-U --animation-speedup)'{-U,--animation-speedup}'[Speedup factor for the animation video]:factor:' \
+        '(-J --json-output)'{-J,--json-output}'[Print result of simulation as a JSON object]:bool:(true false)' \
+        '--verbosity[Verbosity during simulation]:level:(0 1 2)' \
+        '(-R --show-progress)'{-R,--show-progress}'[Show progress bar during simulation]:bool:(true false)' \
+        '(-q --quiet)'{-q,--quiet}'[Quiet, no output at all]:bool:(true false)' \
+        '(-X --generate-json-files)'{-X,--generate-json-files}'[Generate model.json and result.json]:bool:(true false)' \
+        '(-S --random-seed)'{-S,--random-seed}'[Random seed for reproducible results]:seed:' \
+        '(-P --parallel)'{-P,--parallel}'[Use parallel processing when possible]:bool:(true false)' \
+        '--use-quad-tree[Use a spatial index based on quad-trees]:bool:(true false)' \
+        '--min-qnode-size[Set minimum quad-tree node size]:size:' \
+        '--save-quad-tree[Save quad-tree to file]:bool:(true false)' \
+        '--generate-completion[Generate shell completion script]:shell:(bash zsh fish)' \
+        '(-h --help)'{-h,--help}'[Print help]' \
+        '(-V --version)'{-V,--version}'[Print version]'
+}
+
+_gridcover "$@"
