@@ -114,6 +114,9 @@ fonts: ## Generate font data files
 	@cd scripts && ./gen_font_data.sh
 
 scc: ## Generate complexity report
+	@scc -n font_dejavusans 
+
+scc-md: ## Generate complexity report
 	@scc -n font_dejavusans -f html-table | pandoc -f html -t markdown_strict > docs/scc.md
 	@echo "Complexity report generated at docs/scc.md"
 
