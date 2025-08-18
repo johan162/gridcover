@@ -1,79 +1,138 @@
-#!/bin/zsh
-# filepath: completions/_gridcover
-
 #compdef gridcover
 
+autoload -U is-at-least
+
 _gridcover() {
-    local context state line
     typeset -A opt_args
-    
-    _arguments \
-        '(-W --grid-width)'{-W,--grid-width}'[Width in units of the grid]:width:' \
-        '(-H --grid-height)'{-H,--grid-height}'[Height in units of the grid]:height:' \
-        '(-s --square-size)'{-s,--square-size}'[Size of each grid square]:size:' \
-        '(-M --map-file-name)'{-M,--map-file-name}'[Path to map file with obstacles]:file:_files -g "*.yaml *.yml"' \
-        '(-r --radius)'{-r,--radius}'[Radius of the cutter plate]:radius:' \
-        '(-l --blade-len)'{-l,--blade-len}'[Length of knife blade]:length:' \
-        '(-T --cutter-type)'{-T,--cutter-type}'[Cutter type]:type:(blade circular)' \
-        '(-v --velocity)'{-v,--velocity}'[Movement velocity in units/second]:velocity:' \
-        '(-x --start-x)'{-x,--start-x}'[Starting X coordinate for the cutter]:x:' \
-        '(-y --start-y)'{-y,--start-y}'[Starting Y coordinate for the cutter]:y:' \
-        '--dir-x[Start direction X component]:x:' \
-        '--dir-y[Start direction Y component]:y:' \
-        '(-p --perturb)'{-p,--perturb}'[Use perturbation angle for direction changes]:bool:(true false)' \
-        '(-k --perturb-segment)'{-k,--perturb-segment}'[Use perturbation randomly while moving]:bool:(true false)' \
-        '--perturb-segment-percent[Perturb segment percent chance per cell]:percent:' \
-        '(-C --track-center)'{-C,--track-center}'[Turn visual centerpoint tracking on or off]:bool:(true false)' \
-        '--wheel-slippage[Enable wheel slippage]:bool:(true false)' \
-        '--slippage-probability[Probability slippage may happen]:probability:' \
-        '--slippage-min-distance[Minimum distance slippage will be enabled for]:distance:' \
-        '--slippage-max-distance[Maximum distance slippage will be enabled for]:distance:' \
-        '--slippage-radius-min[The minimum radius to model turning]:radius:' \
-        '--slippage-radius-max[The maximum radius to model turning]:radius:' \
-        '--slippage-check-activation-distance[Interval when we randomly check if there is a slippage]:distance:' \
-        '--slippage-adjustment-step[Step size for wheel slippage adjustment]:step:' \
-        '--wheel-inbalance[Enable wheel inbalance]:bool:(true false)' \
-        '--wheel-inbalance-radius-min[Minimum turning radius to model inbalance]:radius:' \
-        '--wheel-inbalance-radius-max[Maximum turning radius to model inbalance]:radius:' \
-        '--wheel-inbalance-adjustment-step[Step size for wheel inbalance adjustment]:step:' \
-        '(-z --step-size)'{-z,--step-size}'[Simulation step size in units]:size:' \
-        '(-b --stop-bounces)'{-b,--stop-bounces}'[Maximum number of bounces before ending simulation]:bounces:' \
-        '(-t --stop-time)'{-t,--stop-time}'[Maximum simulated time when to stop]:time:' \
-        '(-c --stop-coverage)'{-c,--stop-coverage}'[Stop when reaching this coverage percentage]:percentage:' \
-        '(-m --stop-simsteps)'{-m,--stop-simsteps}'[Stop after specified number of simulation steps]:steps:' \
-        '(-d --stop-distance)'{-d,--stop-distance}'[Stop after specified distance covered]:distance:' \
-        '(-B --battery-run-time)'{-B,--battery-run-time}'[Battery duration in minutes]:minutes:' \
-        '(-A --battery-charge-time)'{-A,--battery-charge-time}'[Battery charging time in minutes]:minutes:' \
-        '-o[Output image file name]:file:_files' \
-        '--image-width-mm[Image output width in mm]:width:' \
-        '--image-height-mm[Image output height in mm]:height:' \
-        '(-Z --paper-size)'{-Z,--paper-size}'[Paper size for output image]:size:(A0 A1 A2 A3 A4 A5 Letter Legal)' \
-        '(-D --dpi)'{-D,--dpi}'[DPI setting for image output]:dpi:' \
-        '(-G --show-gridlines)'{-G,--show-gridlines}'[Show or hide gridlines in output image]:bool:(true false)' \
-        '--color-theme[Color theme for output image]:theme:(default green30 blue orange_red gray_green pure_green)' \
-        '--show-quad-tree[Shows the spatial index that is built as a quad-tree in the image]:bool:(true false)' \
-        '--show-image-label[Shows the image label with sim-time and coverage]:bool:(true false)' \
-        '(-f --generate-frames)'{-f,--generate-frames}'[Generate frames for an animation]:bool:(true false)' \
-        '(-F --frame-rate)'{-F,--frame-rate}'[Specify frame-rate for the animation]:fps:' \
-        '--frames-dir[Directory for animation frames]:directory:_directories' \
-        '(-a --create-animation)'{-a,--create-animation}'[Generate an animation video from the frames]:bool:(true false)' \
-        '--animation-file-name[Animation file name]:file:_files' \
-        '--hw-encoding[Use HW assisted encoding for animation]:bool:(true false)' \
-        '--delete-frames[Delete frames after animation has been created]:bool:(true false)' \
-        '(-U --animation-speedup)'{-U,--animation-speedup}'[Speedup factor for the animation video]:factor:' \
-        '(-J --json-output)'{-J,--json-output}'[Print result of simulation as a JSON object]:bool:(true false)' \
-        '--verbosity[Verbosity during simulation]:level:(0 1 2)' \
-        '(-R --show-progress)'{-R,--show-progress}'[Show progress bar during simulation]:bool:(true false)' \
-        '(-q --quiet)'{-q,--quiet}'[Quiet, no output at all]:bool:(true false)' \
-        '(-X --generate-json-files)'{-X,--generate-json-files}'[Generate model.json and result.json]:bool:(true false)' \
-        '(-S --random-seed)'{-S,--random-seed}'[Random seed for reproducible results]:seed:' \
-        '(-P --parallel)'{-P,--parallel}'[Use parallel processing when possible]:bool:(true false)' \
-        '--use-quad-tree[Use a spatial index based on quad-trees]:bool:(true false)' \
-        '--min-qnode-size[Set minimum quad-tree node size]:size:' \
-        '--save-quad-tree[Save quad-tree to file]:bool:(true false)' \
-        '--generate-completion[Generate shell completion script]:shell:(bash zsh fish)' \
-        '(-h --help)'{-h,--help}'[Print help]' \
-        '(-V --version)'{-V,--version}'[Print version]'
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-o+[Output image file name]:IMAGE-FILE-NAME:_default' \
+'--args-write-file-name=[Write program arguments file in TOML format]:ARGS-FILE-NAME:_default' \
+'-i+[Read program arguments from a TOML file]:ARGS-FILE-NAME:_default' \
+'--args-read-file-name=[Read program arguments from a TOML file]:ARGS-FILE-NAME:_default' \
+'-z+[Simulation step size in units if not specified will be calculated from the square size]:STEP_SIZE:_default' \
+'--step-size=[Simulation step size in units if not specified will be calculated from the square size]:STEP_SIZE:_default' \
+'-r+[Radius of the circle]:RADIUS:_default' \
+'--radius=[Radius of the circle]:RADIUS:_default' \
+'-l+[Length of knife blade]:BLADE_LEN:_default' \
+'--blade-len=[Length of knife blade]:BLADE_LEN:_default' \
+'-W+[Width in units of the grid]:GRID_WIDTH:_default' \
+'--grid-width=[Width in units of the grid]:GRID_WIDTH:_default' \
+'-H+[Height in units of the grid]:GRID_HEIGHT:_default' \
+'--grid-height=[Height in units of the grid]:GRID_HEIGHT:_default' \
+'-s+[Size of each grid square]:CELL_SIZE:_default' \
+'--cell-size=[Size of each grid square]:CELL_SIZE:_default' \
+'-x+[Starting X coordinate for the circle center]:START_X:_default' \
+'--start-x=[Starting X coordinate for the circle center]:START_X:_default' \
+'-y+[Starting Y coordinate for the circle center]:START_Y:_default' \
+'--start-y=[Starting Y coordinate for the circle center]:START_Y:_default' \
+'-v+[Movement velocity in units/second]:VELOCITY:_default' \
+'--velocity=[Movement velocity in units/second]:VELOCITY:_default' \
+'--start-dir-x=[Direction X component]:START_DIR_X:_default' \
+'--start-dir-y=[Direction Y component]:START_DIR_Y:_default' \
+'-p+[Use perturbation angle for direction changes at bounce]:PERTURB:(true false)' \
+'--perturb=[Use perturbation angle for direction changes at bounce]:PERTURB:(true false)' \
+'-k+[Use perturbation randomly while moving in a straight line]:PERTURB_SEGMENT:(true false)' \
+'--perturb-segment=[Use perturbation randomly while moving in a straight line]:PERTURB_SEGMENT:(true false)' \
+'--perturb-segment-percent=[Perturb segment percent chance per cell travelled]:PERTURB_SEGMENT_PERCENT:_default' \
+'-b+[Maximum number of bounces before ending simulation]:STOP_BOUNCES:_default' \
+'--stop-bounces=[Maximum number of bounces before ending simulation]:STOP_BOUNCES:_default' \
+'-t+[Maximum simulated time when to stop in seconds]:STOP_TIME:_default' \
+'--stop-time=[Maximum simulated time when to stop in seconds]:STOP_TIME:_default' \
+'-c+[Stop when we have reached this coverage percentage This is a soft limit, the simulation will still run until the specified bounces or time is reached if specified]:STOP_COVERAGE:_default' \
+'--stop-coverage=[Stop when we have reached this coverage percentage This is a soft limit, the simulation will still run until the specified bounces or time is reached if specified]:STOP_COVERAGE:_default' \
+'-m+[Stop when we have reached the specified number of simulation steps]:STOP_SIMSTEPS:_default' \
+'--stop-simsteps=[Stop when we have reached the specified number of simulation steps]:STOP_SIMSTEPS:_default' \
+'-d+[Stop when we have reached the specified distance covered]:STOP_DISTANCE:_default' \
+'--stop-distance=[Stop when we have reached the specified distance covered]:STOP_DISTANCE:_default' \
+'--verbosity=[Verbosity during simulation]:VERBOSITY:_default' \
+'-P+[Use parallel processing to speed up simulation]:PARALLEL:(true false)' \
+'--parallel=[Use parallel processing to speed up simulation]:PARALLEL:(true false)' \
+'-S+[Random seed for the simulation to be able to reproduce results If not specified, a random seed will be generated]:RANDOM_SEED:_default' \
+'--random-seed=[Random seed for the simulation to be able to reproduce results If not specified, a random seed will be generated]:RANDOM_SEED:_default' \
+'--image-width-mm=[Image output width in mm (50-2000)]:IMAGE_WIDTH_MM:_default' \
+'--image-height-mm=[Image output height in mm (50-2000)]:IMAGE_HEIGHT_MM:_default' \
+'-Z+[Paper size to use for the output image. Options\: '\''A0'\'', '\''A1'\'', '\''A2'\'', '\''A3'\'', '\''A4'\'', '\''A5'\'', '\''Letter'\'', '\''Legal'\''.]:PAPER-SIZE:(a5 a4 a3 a2 a1 a0 letter legal tabloid executive custom)' \
+'--paper-size=[Paper size to use for the output image. Options\: '\''A0'\'', '\''A1'\'', '\''A2'\'', '\''A3'\'', '\''A4'\'', '\''A5'\'', '\''Letter'\'', '\''Legal'\''.]:PAPER-SIZE:(a5 a4 a3 a2 a1 a0 letter legal tabloid executive custom)' \
+'-C+[Add option to turn centerpoint tracking on or off]:TRACK_CENTER:(true false)' \
+'--track-center=[Add option to turn centerpoint tracking on or off]:TRACK_CENTER:(true false)' \
+'-R+[Show progress bar during simulation (default\: true)]:SHOW_PROGRESS:(true false)' \
+'--show-progress=[Show progress bar during simulation (default\: true)]:SHOW_PROGRESS:(true false)' \
+'-T+[Cutter type to use for the simulation. Options\: '\''blade'\'', '\''circular'\''.]:CUTTER-TYPE:(blade circular)' \
+'--cutter-type=[Cutter type to use for the simulation. Options\: '\''blade'\'', '\''circular'\''.]:CUTTER-TYPE:(blade circular)' \
+'-D+[DPI setting for image output (default\: 300)]:DPI:_default' \
+'--dpi=[DPI setting for image output (default\: 300)]:DPI:_default' \
+'-J+[Print results as a json object]:JSON_OUTPUT:(true false)' \
+'--json-output=[Print results as a json object]:JSON_OUTPUT:(true false)' \
+'-B+[Battery duration in minutes for the cutter]:BATTERY_RUN_TIME:_default' \
+'--battery-run-time=[Battery duration in minutes for the cutter]:BATTERY_RUN_TIME:_default' \
+'-A+[Battery charging time in minutes for the cutter when it runs out]:BATTERY_CHARGE_TIME:_default' \
+'--battery-charge-time=[Battery charging time in minutes for the cutter when it runs out]:BATTERY_CHARGE_TIME:_default' \
+'-M+[Path to map file with obstacles]:MAP-FILE:_default' \
+'--map-file-name=[Path to map file with obstacles]:MAP-FILE:_default' \
+'-G+[Show or hide gridlines in the output image]:SHOW_GRIDLINES:(true false)' \
+'--show-gridlines=[Show or hide gridlines in the output image]:SHOW_GRIDLINES:(true false)' \
+'-Q+[Store simulation results and model parameters in SQLite database file]:DATABASE-FILE:_default' \
+'--database-file=[Store simulation results and model parameters in SQLite database file]:DATABASE-FILE:_default' \
+'-q+[Quiet, no output at all]:QUIET:(true false)' \
+'--quiet=[Quiet, no output at all]:QUIET:(true false)' \
+'-f+[Generate frames for an animation]:GENERATE_FRAMES:(true false)' \
+'--generate-frames=[Generate frames for an animation]:GENERATE_FRAMES:(true false)' \
+'-F+[Specify frame-rate for the animation]:FRAME_RATE:_default' \
+'--frame-rate=[Specify frame-rate for the animation]:FRAME_RATE:_default' \
+'--frames-dir=[]:FRAMES-DIR:_default' \
+'-a+[Generate an animation video from the frames]:CREATE_ANIMATION:(true false)' \
+'--create-animation=[Generate an animation video from the frames]:CREATE_ANIMATION:(true false)' \
+'--animation-file-name=[Animation file name]:ANIMATION-FILE-NAME:_default' \
+'-U+[Animation speedup factor]:ANIMATION-SPEEDUP-FACTOR:_default' \
+'--animation-speedup=[Animation speedup factor]:ANIMATION-SPEEDUP-FACTOR:_default' \
+'--hw-encoding=[Use HW assisted encoding for the animation. This is only available on macOS and Linux]:HW_ENCODING:(true false)' \
+'--delete-frames=[Delete frames after animation has been created]:DELETE_FRAMES:(true false)' \
+'--color-theme=[Color theme to use as an string, possible values\: "default", "green30", "blue", "high_contrast", "pure_green", "gray_green"]:COLOR-THEME:_default' \
+'--wheel-slippage=[Add simulation of wheel slippage which will cause the cutter to not follow the path exactly]:WHEEL_SLIPPAGE:(true false)' \
+'--slippage-probability=[Slippage probability per slippage_activation_check_distance]:SLIPPAGE_PROBABILITY:_default' \
+'--slippage-min-distance=[Slippage activation min distance in units]:SLIPPAGE_MIN_DISTANCE:_default' \
+'--slippage-max-distance=[Slippage activation max distance in units]:SLIPPAGE_MAX_DISTANCE:_default' \
+'--slippage-radius-min=[Slippage min angle in degrees to adjust as slippage per defined steps]:SLIPPAGE_RADIUS_MIN:_default' \
+'--slippage-radius-max=[Slippage max angle in degrees to adjust as slippage per defined steps]:SLIPPAGE_RADIUS_MAX:_default' \
+'--slippage-check-activation-distance=[Check if we should activate slippage every this units travelled]:SLIPPAGE_CHECK_ACTIVATION_DISTANCE:_default' \
+'--slippage-adjustment-step=[While in slippage mode adjust the angle every n\:th units travelled]:SLIPPAGE_ADJUSTMENT_STEP:_default' \
+'--wheel-inbalance=[Wheel inbalance simulation, this will cause the cutter to not follow the straight path exactly]:WHEEL_INBALANCE:(true false)' \
+'--wheel-inbalance-radius-min=[We model wheel inbalance as the cutter turning in a random radius between a min/max value]:WHEEL_INBALANCE_RADIUS_MIN:_default' \
+'--wheel-inbalance-radius-max=[We model wheel inbalance as the cutter turning in a random radius between a min/max value]:WHEEL_INBALANCE_RADIUS_MAX:_default' \
+'--wheel-inbalance-adjustment-step=[Wheel inbalance adjustment distance in units]:WHEEL_INBALANCE_ADJUSTMENT_STEP:_default' \
+'--show-quad-tree=[Show the quad-tree structure in the output image]:SHOW_QUAD_TREE:(true false)' \
+'--min-qnode-size=[Min quad tree node size in multiples of cutter radius]:MIN_QNODE_SIZE:_default' \
+'--use-quad-tree=[Enable the use of a quad-tree for faster collision detection]:USE_QUAD_TREE:(true false)' \
+'--save-quad-tree=[Save the quad-tree structure to a file with name based on the map file name]:SAVE_QUAD_TREE:(true false)' \
+'--show-image-label=[Decide if label with sim-time and coverage should be added to the output image]:SHOW_IMAGE_LABEL:(true false)' \
+'-X+[Generate model.json and result.json as two files at end of simulation and only print the short version to the console]:GENERATE_JSON_FILES:(true false)' \
+'--generate-json-files=[Generate model.json and result.json as two files at end of simulation and only print the short version to the console]:GENERATE_JSON_FILES:(true false)' \
+'--generate-completions[Generate bash and zsh completion scripts (gridcover.bash and _gridcover) in current directory and exit]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
 }
 
-_gridcover "$@"
+(( $+functions[_gridcover_commands] )) ||
+_gridcover_commands() {
+    local commands; commands=()
+    _describe -t commands 'gridcover commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_gridcover" ]; then
+    _gridcover "$@"
+else
+    compdef _gridcover gridcover
+fi

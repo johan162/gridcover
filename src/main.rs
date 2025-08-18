@@ -11,7 +11,11 @@ mod vector;
 mod video;
 
 use args::{read_args_from_file, write_args_to_file};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::{
+    generate_to,
+    shells::{Bash, Zsh},
+};
 use colored::Colorize;
 use db::try_store_result_to_db;
 use image::try_save_image;
@@ -56,6 +60,31 @@ fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &m
 fn main() {
     let start_time = chrono::Utc::now();
     let mut args = args::Args::parse();
+
+    // Early exit: generate shell completion scripts
+    if args.generate_completions {
+        let mut cmd = args::Args::command();
+        let out_dir = std::env::current_dir().expect("Cannot access current directory");
+        let bin_name = cmd.get_name().to_string();
+        match generate_to(Bash, &mut cmd, bin_name.as_str(), &out_dir) {
+            Ok(path) => println!("Generated bash completion: {}", path.display()),
+            Err(e) => {
+                eprintln!("Failed to generate bash completion: {e}");
+                std::process::exit(1);
+            }
+        }
+        // Recreate command for zsh generation
+        let mut cmd = args::Args::command();
+        match generate_to(Zsh, &mut cmd, bin_name.as_str(), &out_dir) {
+            Ok(path) => println!("Generated zsh completion: {}", path.display()),
+            Err(e) => {
+                eprintln!("Failed to generate zsh completion: {e}");
+                std::process::exit(1);
+            }
+        }
+        println!("Shell completion scripts generated. Exiting.");
+        return;
+    }
 
     if let Some(args_read_file) = args.args_read_file_name.as_ref() {
         match read_args_from_file::<args::Args>(args_read_file.as_str()) {

@@ -521,6 +521,10 @@ pub struct Args {
     /// only print the short version to the console.
     #[arg(short = 'X', long, default_value_t = false, action = clap::ArgAction::Set)]
     pub generate_json_files: bool,
+
+    /// Generate bash and zsh completion scripts (gridcover.bash and _gridcover) in current directory and exit
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    pub generate_completions: bool,
 }
 
 
@@ -594,6 +598,7 @@ impl Args {
             save_quad_tree: if self.save_quad_tree { self.save_quad_tree } else { other.save_quad_tree },
             show_image_label: if self.show_image_label { self.show_image_label } else { other.show_image_label },
             generate_json_files: if self.generate_json_files { self.generate_json_files } else { other.generate_json_files },
+            generate_completions: if self.generate_completions { self.generate_completions } else { other.generate_completions },
         }
     }
 }
