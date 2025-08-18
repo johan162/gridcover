@@ -1,6 +1,6 @@
 [package]
 name = "gridcover"
-version = "2.4.0-beta"
+version = "2.4.0"
 edition = "2024"
 
 [dependencies]
