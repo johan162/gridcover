@@ -447,27 +447,27 @@ rpm:
 	@echo "------------------------------------"
 endif
 
-install-completions: ## Generate and install shell completions for bash and zsh
-    # Generate completions
-    # ./target/release/gridcover --generate-completion bash > completions/gridcover.bash
-    # ./target/release/gridcover --generate-completion zsh > completions/_gridcover
-    
-    # Install bash completion
+gen-bash-completions: ## Generate and install shell completions for bash
+    ./target/release/gridcover --generate-completion 
     @if [ -d /usr/local/etc/bash_completion.d ]; then \
-        cp assets/completions/gridcover.bash /usr/local/etc/bash_completion.d/; \
+        cp gridcover.bash /usr/local/etc/bash_completion.d/; \
     elif [ -d /etc/bash_completion.d ]; then \
-        cp assets/completions/gridcover.bash /etc/bash_completion.d/; \
+        cp gridcover.bash /etc/bash_completion.d/; \
     else \
-        echo "Copy assets/completions/gridcover.bash to your bash completion directory"; \
+        echo "Cannot locate bash completion directory. Copy gridcover.bash to your bash completion directory"; \
     fi
-    
-    # Install zsh completion
+	@rm -f gridcover.bash _gridcover
+	@echo "bash completions installed. Restart your shell or source your shell config."
+
+install-zsh-completions: ## Generate and install shell completions for zsh
+	./target/release/gridcover --generate-completion
     @if [ -d /usr/local/share/zsh/site-functions ]; then \
-        cp assets/completions/_gridcover /usr/local/share/zsh/site-functions/; \
+        cp _gridcover /usr/local/share/zsh/site-functions/; \
     elif [ -d /usr/share/zsh/site-functions ]; then \
-        cp assets/completions/_gridcover /usr/share/zsh/site-functions/; \
+        cp _gridcover /usr/share/zsh/site-functions/; \
     else \
-        echo "Copy completions/_gridcover to your zsh completion directory"; \
+        echo "Cannot locate zsh completion directory. Copy _gridcover to your zsh completion directory"; \
     fi
-    
-    @echo "Completions installed. Restart your shell or source your shell config."
+	@rm -f gridcover.bash _gridcover
+	@echo "zsh completions installed. Restart your shell or source your shell config."
+
