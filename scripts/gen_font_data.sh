@@ -123,10 +123,10 @@ log() {
     case "$level" in
       "ERROR")   [[ "$quiet" = false ]] && printf '%b\n' "${ERROR_GLYPH}${RedBold}Error: ${message}${ResetColor}" >&2 ;;
       "WARN")    [[ "$quiet" = false ]] && printf '%b\n' "${WARNING_GLYPH}${YellowBold}Warning: ${message}${ResetColor}" >&2 ;;
-      "NOTICE")  [[ "$quiet" = false ]] && printf '%b\n' "${NOTICE_GLYPH}${CyanBold}Notice: ${message}${ResetColor}" ;;
+      "NOTICE")  [[ "$quiet" = false ]] && printf '%b\n' "${NOTICE_GLYPH}${Magenta}Notice: ${message}${ResetColor}" ;;
       "SUCCESS") [[ "$quiet" = false ]] && printf '%b\n' "${SUCCESS_GLYPH}${GreenBold}${message}${ResetColor}" ;;
       "INFO")    [[ "$verbose" = true && "$quiet" = false ]] && printf '%b\n' "${INFO_GLYPH}${Gray}${message}${ResetColor}" ;;
-      "DEBUG")   [[ "$debug" = true ]] && printf '%b\n' "${DEBUG_GLYPH}${Magenta}${message}${ResetColor}" ;;
+      "DEBUG")   [[ "$debug" = true ]] && printf '%b\n' "${DEBUG_GLYPH}${Cyan}${message}${ResetColor}" ;;
     esac
     return 0
 }
@@ -315,20 +315,23 @@ download_and_install_fonts() {
     local font_dir="$1"
     local -a ttf_font_files=("${@:2}") # Get all arguments after the first one
 
-    log "NOTICE" "No installed fonts found. Will download DejaVu fonts to \"$font_dir\"."
+    # log "NOTICE" "No installed fonts found. Will download DejaVu fonts to \"$font_dir\"."
     mkdir -p "$font_dir" || { log "ERROR" "Failed to create font directory \"$font_dir\"."; exit 1; }
 
-    temp_dir=$(mktemp -d)
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "Failed to create temporary directory."
+    temp_dir=$(mktemp -d) || { log "ERROR" "Failed to create temporary directory."; exit 1; }
+    tmp_archive="${temp_dir}/dejavu-fonts-${DEJAVU_VERSION}.tar.bz2"
+
+    # Download the font package from the DejaVu Fonts repository
+    curl -f -S -s -L -o "$tmp_archive" "${DEJAVU_URL}" || { log "ERROR" "Failed to download DejaVu Fonts package from ${DEJAVU_URL}."; exit 1; }
+    log "INFO" "DejaVu fonts package downloaded successfully."
+
+    # Safety check: ensure archive contains no absolute paths or '..' components
+    if tar -tjf "$tmp_archive" | grep -E '(^/|(^|/)\.\./)' >/dev/null; then
+        log "ERROR" "Archive contains unsafe paths (absolute paths or .. entries); aborting."
         exit 1
     fi
 
-    # Download the font package from the DejaVu Fonts repository
-    curl -s -L -o "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" "${DEJAVU_URL}" || { log "ERROR" "Failed to download DejaVu Fonts package from ${DEJAVU_URL}."; exit 1; }
-    log "INFO" "DejaVu fonts package downloaded successfully."
-
-    tar -xjf "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" -C "${temp_dir}" || { log "ERROR" "Failed to extract DejaVu Fonts package."; exit 1; }
+    tar -xjf "$tmp_archive" -C "${temp_dir}" || { log "ERROR" "Failed to extract DejaVu Fonts package."; exit 1; }
     log "INFO" "DejaVu fonts package unpacked successfully."
 
     for ttf_file in "${ttf_font_files[@]}"; do
