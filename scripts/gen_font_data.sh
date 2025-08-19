@@ -27,25 +27,6 @@ readonly FONT_DIR="../assets/fonts"
 # The output directory is where the generated Rust files will be saved.
 readonly DEFAULT_OUTPUT_DIR="../src/image"
 
-# Color Constants
-Green="\033[32m"
-GreenBold="\033[1;32m"
-Cyan="\033[36m"
-CyanBold="\033[1;36m"
-Gray="\033[30m"
-GrayBold="\033[1;30m"
-Red="\033[31m"
-RedBold="\033[1;31m"
-Yellow="\033[33m"
-YellowBold="\033[1;33m"
-White="\033[37m"
-Blue="\033[34m"
-BlueBold="\033[1;34m"
-Magenta="\033[35m"
-MagentaBold="\033[1;35m"
-ResetColor="\033[0m"
-
-
 # The name of the Rust font files and the name of the variables they define will be dynamically
 # created based on the TTF font file names. See the function `create_rust_variable_name`.
 declare -a RUST_FONT_FILES
@@ -71,7 +52,25 @@ font_dir="${FONT_DIR}"
 # Configuration and Setup Functions
 # ============================================================
 
-# Set no color by empty color strings
+# Color Constants
+Green="\033[32m"
+GreenBold="\033[1;32m"
+Cyan="\033[36m"
+CyanBold="\033[1;36m"
+Gray="\033[30m"
+GrayBold="\033[1;30m"
+Red="\033[31m"
+RedBold="\033[1;31m"
+Yellow="\033[33m"
+YellowBold="\033[1;33m"
+White="\033[37m"
+Blue="\033[34m"
+BlueBold="\033[1;34m"
+Magenta="\033[35m"
+MagentaBold="\033[1;35m"
+ResetColor="\033[0m"
+
+# Check if no color should be used in the output
 check_no_color() {
     if [[ "$no_color" = true ]]; then
         Green=""
@@ -102,6 +101,7 @@ INFO_GLYPH="ℹ️  "
 DEBUG_GLYPH="🐞 "
 HEADER_GLYPH="🔤 "
 
+# Check if no glyphs should be used in the output
 check_no_glyphs() {
     if [[ "$no_glyphs" = true ]]; then
         ERROR_GLYPH=""
@@ -121,12 +121,12 @@ log() {
     local message="$*"
 
     case "$level" in
-      "ERROR")   [[ "$quiet" = false ]] && echo -e "${ERROR_GLYPH}${RedBold}Error: $message${ResetColor}" >&2 ;;
-      "WARN")    [[ "$quiet" = false ]] && echo -e "${WARNING_GLYPH}${YellowBold}Warning: $message${ResetColor}" >&2 ;;
-      "NOTICE")  [[ "$quiet" = false ]] && echo -e "${NOTICE_GLYPH}${CyanBold}Notice: $message${ResetColor}" ;;
-      "SUCCESS") [[ "$quiet" = false ]] && echo -e "${SUCCESS_GLYPH}${GreenBold}$message${ResetColor}" ;;
-      "INFO")    [[ "$verbose" = true ]] && [[ "$quiet" = false ]] && echo -e "${INFO_GLYPH}${Gray}$message${ResetColor}" ;;
-      "DEBUG")   [[ "$debug" = true ]] && echo -e "${DEBUG_GLYPH}${Magenta}$message${ResetColor}" ;;
+      "ERROR")   [[ "$quiet" = false ]] && printf '%b\n' "${ERROR_GLYPH}${RedBold}Error: ${message}${ResetColor}" >&2 ;;
+      "WARN")    [[ "$quiet" = false ]] && printf '%b\n' "${WARNING_GLYPH}${YellowBold}Warning: ${message}${ResetColor}" >&2 ;;
+      "NOTICE")  [[ "$quiet" = false ]] && printf '%b\n' "${NOTICE_GLYPH}${CyanBold}Notice: ${message}${ResetColor}" ;;
+      "SUCCESS") [[ "$quiet" = false ]] && printf '%b\n' "${SUCCESS_GLYPH}${GreenBold}${message}${ResetColor}" ;;
+      "INFO")    [[ "$verbose" = true && "$quiet" = false ]] && printf '%b\n' "${INFO_GLYPH}${Gray}${message}${ResetColor}" ;;
+      "DEBUG")   [[ "$debug" = true ]] && printf '%b\n' "${DEBUG_GLYPH}${Magenta}${message}${ResetColor}" ;;
     esac
     return 0
 }
@@ -138,14 +138,13 @@ check_dependencies() {
     command -v xxd >/dev/null || missing+=("xxd")
     command -v curl >/dev/null || missing+=("curl")
     command -v tar >/dev/null || missing+=("tar")
+    command -v cmp >/dev/null || missing+=("cmp")
 
     if [[ ${#missing[@]} -gt 0 ]]; then
-        echo -e "${ERROR_GLYPH}${RedBold}Error: Missing required commands: ${missing[*]}${ResetColor}" >&2
+        printf '%b\n' "${ERROR_GLYPH}${RedBold}Error: Missing required commands: ${missing[*]}${ResetColor}" >&2
         exit 1
     fi
-    if [[ "$verbose" = true ]] && [[ "$quiet" = false ]]; then
-        echo -e "${INFO_GLYPH}${Gray}All required commands are available.${ResetColor}"
-    fi
+    [[ "$verbose" = true && "$quiet" = false ]] && printf '%b\n' "${INFO_GLYPH}${Gray}All required commands are available.${ResetColor}"
     return 0
 }
 
@@ -233,6 +232,11 @@ verify_options() {
 # Font Processing Functions  
 # ============================================================
 
+# Escape a string for use in sed search/replace (escape / and &)
+sed_escape() {
+    printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'
+}
+
 # Wrapper around xxd to dump a file into a C-header file and convert the C-declaration
 # with the default variable name to valid Rust syntax.
 make_rust_hex_dump() {
@@ -245,6 +249,8 @@ make_rust_hex_dump() {
     local original_var_name
     original_var_name=$(echo "${input_file}" | tr '.\-/' '_')
 
+    local esc_orig
+    esc_orig=$(sed_escape "$original_var_name")
     # Note: With set -o pipefail + errexit the pipeline failure will abort the script.
 
     xxd -i -c "$columns" "$input_file" | \
@@ -254,7 +260,7 @@ make_rust_hex_dump() {
         -e "s/{/\&[/g" \
         -e "s/}/]/g" \
         -e "s/_len/_LEN : usize/g" \
-        -e "s/$original_var_name/$var_name/g" | \
+        -e "s/${esc_orig}/${var_name}/g" | \
     awk '/pub static/{print "// DO NOT EDIT! Created automatically by gen_font_data.sh\n#[allow(dead_code)]"}1' >"$output_file"
    
 }
@@ -342,7 +348,7 @@ download_and_install_fonts() {
             log "ERROR" "Required font file \"$ttf_file\" not found in the extracted package."
             exit 1
         fi
-        cp "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}/ttf/${ttf_file}" "${font_dir}/${ttf_file}"
+        cp -- "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}/ttf/${ttf_file}" "${font_dir}/${ttf_file}"
         if [[ $? -ne 0 ]]; then
             log "ERROR" "Failed to copy \"$ttf_file\" to \"$font_dir\"."
             exit 1
@@ -351,7 +357,7 @@ download_and_install_fonts() {
     done
 
     # Clean up the temporary files
-    rm -rf "${temp_dir}"
+    rm -rf -- "${temp_dir}"
     if [[ $? -ne 0 ]]; then
         log "ERROR" "Failed to clean up temporary directory."
         exit 1
@@ -386,6 +392,26 @@ create_rust_static_data_file() {
     done
 }
 
+check_if_font_exists() {
+    # Check if any of the font files are missing, then we download all of them
+    log "INFO" "Checking for missing font files..."
+    local need_update=false
+    if [[ ! -d "${font_dir}" ]]; then
+        download_and_install_fonts "${font_dir}" "${DEJAVU_TTF_FONTS[@]}"
+    else
+        for font in "${DEJAVU_TTF_FONTS[@]}"; do
+            if [[ ! -f "${font_dir}/${font}" ]]; then
+                log "NOTICE" "Font file \"${font}\" not found in \"$font_dir\". Will download fonts."
+                need_update=true
+                break
+            fi
+        done
+        if [[ "${need_update}" = true ]]; then
+            download_and_install_fonts "${font_dir}" "${DEJAVU_TTF_FONTS[@]}"
+        fi
+    fi
+}   
+
 # ============================================================
 # Utility and Helper Functions
 # ============================================================
@@ -395,7 +421,7 @@ cleanup_temporary_files() {
     log "INFO" "Removing temporary Rust data files..."
     for file in "${RUST_FONT_FILES[@]}"; do
         if [[ -f "$file" ]]; then
-            rm "$file"
+            rm -- "$file"
             if [[ $? -ne 0 ]]; then
                 log "ERROR" "Failed to remove temporary file \"$file\"."
                 exit 1
@@ -449,12 +475,10 @@ main() {
     print_script_header
     print_debug_info
 
-    # If the fonts directory does not exist, create it and download the font files.
-    if [[ ! -d "${font_dir}" ]]; then
-        download_and_install_fonts "${font_dir}" "${DEJAVU_TTF_FONTS[@]}"
-    fi
+    # Check if all font files exist and download if they don't
+    check_if_font_exists
 
-    # Here we do the main conversion work
+    # Create the Rust static variable files from the font files
     create_rust_static_data_file
 
     # Finally give the good news to the user
@@ -464,7 +488,7 @@ main() {
         log "SUCCESS" "Done. No updates necessary. Rust font data files are already up to date."
     fi
 
-     # Remove the temporary Rust data files
+    # Remove the temporary Rust data files
     cleanup_temporary_files
 
     log "INFO" "Script completed successfully."
