@@ -7,7 +7,7 @@
 # JP 2025-08-08
 
 # Warn about using undefined variables and exit on error
-set -ueo pipefail
+set -o errexit -o nounset -o pipefail
 
 # Script Configuration
 readonly SCRIPT_VERSION="1.2"
@@ -28,26 +28,23 @@ readonly FONT_DIR="../assets/fonts"
 readonly DEFAULT_OUTPUT_DIR="../src/image"
 
 # Color Constants
-readonly Green="\033[32m"
-readonly GreenBold="\033[1;32m"
-readonly Cyan="\033[36m"
-readonly CyanBold="\033[1;36m"
-readonly Gray="\033[30m"
-readonly GrayBold="\033[1;30m"
-readonly Red="\033[31m"
-readonly RedBold="\033[1;31m"
-readonly Yellow="\033[33m"
-readonly YellowBold="\033[1;33m"
-readonly White="\033[37m"
-readonly Blue="\033[34m"
-readonly BlueBold="\033[1;34m"
-readonly Magenta="\033[35m"
-readonly MagentaBold="\033[1;35m"
-readonly ResetColor="\033[0m"
+Green="\033[32m"
+GreenBold="\033[1;32m"
+Cyan="\033[36m"
+CyanBold="\033[1;36m"
+Gray="\033[30m"
+GrayBold="\033[1;30m"
+Red="\033[31m"
+RedBold="\033[1;31m"
+Yellow="\033[33m"
+YellowBold="\033[1;33m"
+White="\033[37m"
+Blue="\033[34m"
+BlueBold="\033[1;34m"
+Magenta="\033[35m"
+MagentaBold="\033[1;35m"
+ResetColor="\033[0m"
 
-# ============================================================
-# No need to edit below this line!
-# ============================================================
 
 # The name of the Rust font files and the name of the variables they define will be dynamically
 # created based on the TTF font file names. See the function `create_rust_variable_name`.
@@ -63,6 +60,8 @@ RUST_VARIABLES=()
 verbose=false
 quiet=false
 debug=false
+no_color=false
+no_glyphs=false
 opt=""
 columns="${DEFAULT_COLUMNS}"
 output_dir="${DEFAULT_OUTPUT_DIR}"
@@ -72,6 +71,49 @@ font_dir="${FONT_DIR}"
 # Configuration and Setup Functions
 # ============================================================
 
+# Set no color by empty color strings
+check_no_color() {
+    if [[ "$no_color" = true ]]; then
+        Green=""
+        GreenBold=""
+        Cyan=""
+        CyanBold=""
+        Gray=""
+        GrayBold=""
+        Red=""
+        RedBold=""
+        Yellow=""
+        YellowBold=""
+        White=""
+        Blue=""
+        BlueBold=""
+        Magenta=""
+        MagentaBold=""
+        ResetColor=""
+    fi
+}
+
+# Define glyphs for logging output + one space
+ERROR_GLYPH="❌ "
+SUCCESS_GLYPH="✅ "
+WARNING_GLYPH="⚠️ "
+NOTICE_GLYPH="🔔 "
+INFO_GLYPH="ℹ️  "
+DEBUG_GLYPH="🐞 "
+HEADER_GLYPH="🔤 "
+
+check_no_glyphs() {
+    if [[ "$no_glyphs" = true ]]; then
+        ERROR_GLYPH=""
+        SUCCESS_GLYPH=""
+        WARNING_GLYPH=""
+        NOTICE_GLYPH=""
+        INFO_GLYPH=""
+        DEBUG_GLYPH=""
+        HEADER_GLYPH=""
+    fi
+}
+
 # Logging function for all script output
 log() {
     local level="$1"
@@ -79,12 +121,12 @@ log() {
     local message="$*"
 
     case "$level" in
-      "ERROR")   [[ "$quiet" = false ]] && echo -e "❌  ${RedBold}Error: $message${ResetColor}" >&2 ;;
-      "WARN")    [[ "$quiet" = false ]] && echo -e "⚠️  ${YellowBold}Warning: $message${ResetColor}" >&2 ;;
-      "NOTICE")  [[ "$quiet" = false ]] && echo -e "🔔 ${CyanBold}Notice: $message${ResetColor}" ;;
-      "SUCCESS") [[ "$quiet" = false ]] && echo -e "✅ ${GreenBold}$message${ResetColor}" ;;
-      "INFO")    [[ "$verbose" = true ]] && [[ "$quiet" = false ]] && echo -e "ℹ️  ${Gray}$message${ResetColor}" ;;
-      "DEBUG")   [[ "$debug" = true ]] && echo -e "🐞 ${Magenta}$message${ResetColor}" ;;
+      "ERROR")   [[ "$quiet" = false ]] && echo -e "${ERROR_GLYPH}${RedBold}Error: $message${ResetColor}" >&2 ;;
+      "WARN")    [[ "$quiet" = false ]] && echo -e "${WARNING_GLYPH}${YellowBold}Warning: $message${ResetColor}" >&2 ;;
+      "NOTICE")  [[ "$quiet" = false ]] && echo -e "${NOTICE_GLYPH}${CyanBold}Notice: $message${ResetColor}" ;;
+      "SUCCESS") [[ "$quiet" = false ]] && echo -e "${SUCCESS_GLYPH}${GreenBold}$message${ResetColor}" ;;
+      "INFO")    [[ "$verbose" = true ]] && [[ "$quiet" = false ]] && echo -e "${INFO_GLYPH}${Gray}$message${ResetColor}" ;;
+      "DEBUG")   [[ "$debug" = true ]] && echo -e "${DEBUG_GLYPH}${Magenta}$message${ResetColor}" ;;
     esac
     return 0
 }
@@ -98,11 +140,11 @@ check_dependencies() {
     command -v tar >/dev/null || missing+=("tar")
 
     if [[ ${#missing[@]} -gt 0 ]]; then
-        echo -e "❌ ${RedBold}Error: Missing required commands: ${missing[*]}${ResetColor}" >&2
+        echo -e "${ERROR_GLYPH}${RedBold}Error: Missing required commands: ${missing[*]}${ResetColor}" >&2
         exit 1
     fi
-    if [[ "$verbose" = true ]]; then
-        echo -e "ℹ️  ${Gray}All required commands are available.${ResetColor}"
+    if [[ "$verbose" = true ]] && [[ "$quiet" = false ]]; then
+        echo -e "${INFO_GLYPH}${Gray}All required commands are available.${ResetColor}"
     fi
     return 0
 }
@@ -121,6 +163,8 @@ OPTIONS:
     -V               Show verbose output
     -q               Suppress output
     -c <columns>     Specify the number of hex data columns in the dump (default: 80)
+    -n               No ANSI color in output messages
+    -g               No glyphs in output messages
 EOF
     exit 0
 }
@@ -147,7 +191,7 @@ validate_numeric_range() {
 
 # Parse command line options
 read_options() {
-    while getopts "hvVqc:o:d" opt; do
+    while getopts "hvVqc:o:dng" opt; do
         case $opt in
         h) show_help ;;
         v)
@@ -155,6 +199,8 @@ read_options() {
             exit 0
             ;;
         V) verbose=true ;;
+        n) no_color=true ;;
+        g) no_glyphs=true ;;
         q) quiet=true ;; # exec &>/dev/null ;;
         c) columns="$OPTARG" ;;
         o) output_dir="$OPTARG" ;;
@@ -188,11 +234,18 @@ verify_options() {
 # ============================================================
 
 # Wrapper around xxd to dump a file into a C-header file and convert the C-declaration
-# to valid Rust syntax.
+# with the default variable name to valid Rust syntax.
 make_rust_hex_dump() {
-    local input_file=$1
-    local output_file=$2
-    local var_name=$3
+    local input_file="$1"
+    local output_file="$2"
+    local var_name="$3"
+
+    # The original variable name created by xxd is the full path with special chars
+    # replaced by underscores.
+    local original_var_name
+    original_var_name=$(echo "${input_file}" | tr '.\-/' '_')
+
+    # Note: With set -o pipefail + errexit the pipeline failure will abort the script.
 
     xxd -i -c "$columns" "$input_file" | \
     sed -e "s/unsigned char/pub static/g" \
@@ -201,13 +254,9 @@ make_rust_hex_dump() {
         -e "s/{/\&[/g" \
         -e "s/}/]/g" \
         -e "s/_len/_LEN : usize/g" \
-        -e "s/$(echo "${input_file}" | tr '.\-/' '_')/$var_name/g" | \
+        -e "s/$original_var_name/$var_name/g" | \
     awk '/pub static/{print "// DO NOT EDIT! Created automatically by gen_font_data.sh\n#[allow(dead_code)]"}1' >"$output_file"
-
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "Failed to convert \"$input_file\" to \"$output_file\"."
-        exit 1
-    fi
+   
 }
 
 # Dump a hex representation of a file and convert it to a Rust static array.
@@ -318,18 +367,23 @@ download_and_install_fonts() {
 install_or_skip_if_same() {
     local update=1
     for file in "${RUST_FONT_FILES[@]}"; do
-        if cmp -s "${file}" "${output_dir}/${file}"; then
+        if [[ -f "${file}" && -f "${output_dir}/${file}" ]] && cmp -s -- "${file}" "${output_dir}/${file}"; then
             log "NOTICE" "New font file \"${file}\" is the same as existing \"${output_dir}/${file}\"."
         else
-            mv "${file}" "${output_dir}/${file}"
-            if [[ $? -ne 0 ]]; then
-                log "ERROR" "Failed to move \"$file\" to \"$output_dir\"."
-                exit 1
-            fi
+            mv -- "${file}" "${output_dir}/${file}"
+            log "INFO" "Moved \"${file}\" to \"${output_dir}/${file}\"."
             update=0
         fi
     done
     return $update
+}
+
+# Create the Rust static data file for each font file
+create_rust_static_data_file() {
+    # Create the Rust static data file for each font file
+    for i in "${!DEJAVU_TTF_FONTS[@]}"; do
+        make_rust_hex_dump_with_check "${font_dir}/${DEJAVU_TTF_FONTS[$i]}" "${RUST_FONT_FILES[$i]}" "${RUST_VARIABLES[$i]}"
+    done
 }
 
 # ============================================================
@@ -365,16 +419,8 @@ print_debug_info() {
 # Print the script header information
 print_script_header() {
     if [[ "${quiet}" = false ]]; then
-        echo -e "🔤 gen_font_data.sh, v${SCRIPT_VERSION}${ResetColor} - Generating Rust static font data files."
+        echo -e "${HEADER_GLYPH}gen_font_data.sh, v${SCRIPT_VERSION}${ResetColor} - Generating Rust static font data files."
     fi
-}
-
-# Create the Rust static data file for each font file
-create_rust_static_data_file() {
-    # Create the Rust static data file for each font file
-    for i in "${!DEJAVU_TTF_FONTS[@]}"; do
-        make_rust_hex_dump_with_check "${font_dir}/${DEJAVU_TTF_FONTS[$i]}" "${RUST_FONT_FILES[$i]}" "${RUST_VARIABLES[$i]}"
-    done
 }
 
 # ============================================================
@@ -382,15 +428,22 @@ create_rust_static_data_file() {
 # ============================================================
 
 main() {
-    # Check for tool dependencies and exit if any are missing
+   
+    # Read and verify options given to the script
+    read_options "$@"
+
+    # Possibly ignore colors and glyphs (useful in a CI/CD pipeline)
+    check_no_color
+    check_no_glyphs
+
+    # Verify the options
+    verify_options
+
+     # Check for tool dependencies and exit if any are missing
     check_dependencies
 
     # Set up the Rust font file names and variable names from the TTF font names
     setup_rust_font_file_and_variable_names
-
-    # Read and verify options given to the script
-    read_options "$@"
-    verify_options
 
     # Some script information
     print_script_header
