@@ -316,11 +316,7 @@ download_and_install_fonts() {
     local -a ttf_font_files=("${@:2}") # Get all arguments after the first one
 
     log "NOTICE" "No installed fonts found. Will download DejaVu fonts to \"$font_dir\"."
-    mkdir -p "$font_dir"
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "Failed to create font directory \"$font_dir\"."
-        exit 1
-    fi
+    mkdir -p "$font_dir" || { log "ERROR" "Failed to create font directory \"$font_dir\"."; exit 1; }
 
     temp_dir=$(mktemp -d)
     if [[ $? -ne 0 ]]; then
@@ -329,18 +325,10 @@ download_and_install_fonts() {
     fi
 
     # Download the font package from the DejaVu Fonts repository
-    curl -s -L -o "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" "${DEJAVU_URL}"
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "Failed to download DejaVu Fonts package from ${DEJAVU_URL}."
-        exit 1
-    fi
+    curl -s -L -o "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" "${DEJAVU_URL}" || { log "ERROR" "Failed to download DejaVu Fonts package from ${DEJAVU_URL}."; exit 1; }
     log "INFO" "DejaVu fonts package downloaded successfully."
 
-    tar -xjf "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" -C "${temp_dir}"
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "Failed to extract DejaVu Fonts package."
-        exit 1
-    fi
+    tar -xjf "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" -C "${temp_dir}" || { log "ERROR" "Failed to extract DejaVu Fonts package."; exit 1; }
     log "INFO" "DejaVu fonts package unpacked successfully."
 
     for ttf_file in "${ttf_font_files[@]}"; do
@@ -348,23 +336,16 @@ download_and_install_fonts() {
             log "ERROR" "Required font file \"$ttf_file\" not found in the extracted package."
             exit 1
         fi
-        cp -- "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}/ttf/${ttf_file}" "${font_dir}/${ttf_file}"
-        if [[ $? -ne 0 ]]; then
-            log "ERROR" "Failed to copy \"$ttf_file\" to \"$font_dir\"."
+        cp -- "${temp_dir}/dejavu-fonts-ttf-${DEJAVU_VERSION}/ttf/${ttf_file}" "${font_dir}/${ttf_file}" || {
+            log "ERROR" "Failed to copy font file \"$ttf_file\" to \"$font_dir\"."
             exit 1
-        fi
+        }
         log "INFO" "Font file \"$ttf_file\" copied to \"$font_dir\"."
     done
 
     # Clean up the temporary files
-    rm -rf -- "${temp_dir}"
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "Failed to clean up temporary directory."
-        exit 1
-    fi
-    if [[ "$verbose" = true ]]; then
-        log "INFO" "Temporary files cleaned up."
-    fi
+    rm -rf -- "${temp_dir}" || { log "ERROR" "Failed to remove temporary directory \"$temp_dir\"."; exit 1; }
+    log "INFO" "Temporary files cleaned up."
 
     log "SUCCESS" "Font files \"${ttf_font_files[*]}\" installed in \"$font_dir\"."
 }
@@ -376,7 +357,10 @@ install_or_skip_if_same() {
         if [[ -f "${file}" && -f "${output_dir}/${file}" ]] && cmp -s -- "${file}" "${output_dir}/${file}"; then
             log "NOTICE" "New font file \"${file}\" is the same as existing \"${output_dir}/${file}\"."
         else
-            mv -- "${file}" "${output_dir}/${file}"
+            mv -- "${file}" "${output_dir}/${file}" || {
+                log "ERROR" "Failed to move \"${file}\" to \"${output_dir}/${file}\"."
+                exit 1
+            }
             log "INFO" "Moved \"${file}\" to \"${output_dir}/${file}\"."
             update=0
         fi
@@ -421,11 +405,7 @@ cleanup_temporary_files() {
     log "INFO" "Removing temporary Rust data files..."
     for file in "${RUST_FONT_FILES[@]}"; do
         if [[ -f "$file" ]]; then
-            rm -- "$file"
-            if [[ $? -ne 0 ]]; then
-                log "ERROR" "Failed to remove temporary file \"$file\"."
-                exit 1
-            fi
+            rm -- "$file" || { log "ERROR" "Failed to remove temporary file \"$file\"."; exit 1; }
             log "INFO" "Temporary file \"$file\" removed."
         fi
     done
