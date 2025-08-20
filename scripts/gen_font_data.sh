@@ -433,21 +433,47 @@ print_script_header() {
     fi
 }
 
+# Check this by getting the last path of the current working directory
+check_if_run_from_scripts_directory() {
+    local current_dir
+    local last_dir
+    current_dir="$(pwd)"
+    last_dir="$(basename "$current_dir")"
+
+    # The last dir needs to be equal to "scripts"
+    if [[ "${last_dir}" != "scripts" ]]; then
+        log "ERROR" "This script must be run from the \"scripts\" directory."
+        exit 1
+    fi
+
+    # Check that the "assets" folder exists above this directory
+    if [[ ! -d "${current_dir}/../assets" ]]; then
+        log "ERROR" "The \"../assets\" folder is missing. Please ensure this script is run from the \"scripts\" directory."
+        exit 1
+    fi
+
+    log "DEBUG" "Running from the \"scripts\" directory."
+    return 0
+}
+
 # ============================================================
 # Main Script Execution
 # ============================================================
 
 main() {
-   
-    # Read and verify options given to the script
+    # Read options given to the script
     read_options "$@"
 
     # Possibly ignore colors and glyphs (useful in a CI/CD pipeline)
     check_no_color
     check_no_glyphs
 
-    # Verify the options
+    # Verify the remaining options to be used in script. 
     verify_options
+
+    # Check that we are running from the assumed directory. Needed
+    # as we use relative paths in the script
+    check_if_run_from_scripts_directory
 
      # Check for tool dependencies and exit if any are missing
     check_dependencies
