@@ -133,7 +133,8 @@ log() {
 
 # Check for required tools needed by the script
 check_dependencies() {
-    local -a missing=()
+    local -a missing
+    missing=()
 
     command -v xxd >/dev/null || missing+=("xxd")
     command -v curl >/dev/null || missing+=("curl")
