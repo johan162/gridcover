@@ -73,7 +73,7 @@ where
 }
 
 
-#[derive(Parser, Debug, Serialize, Deserialize)]
+#[derive(Parser, Debug, Serialize, Deserialize, Clone)]
 #[command(author, version, about = "Grid coverage simulation")]
 #[serde(default)] 
 pub struct Args {
@@ -523,6 +523,8 @@ pub struct Args {
     pub generate_json_files: bool,
 
     /// Generate bash and zsh completion scripts (gridcover.bash and _gridcover) in current directory and exit
+    /// zsh completion script will be named _gridcover, bash completion script will be named gridcover.bash
+    /// Store zsh completion in "/usr/local/share/zsh/site-functions" and bash completion in "/usr/local/share/bash-completion/completions"
     #[arg(long, action = clap::ArgAction::SetTrue)]
     pub generate_completions: bool,
 }

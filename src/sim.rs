@@ -145,7 +145,7 @@ impl SlippageModel {
 fn handle_wheel_slippage(
     model: &mut SimModel,
     slippage_model: &mut SlippageModel,
-    mut current_dir: &mut Vector,
+    current_dir: &mut Vector,
     rng: &mut impl Rng,
 ) {
     if model.wheel_slippage {
@@ -186,7 +186,7 @@ fn handle_wheel_slippage(
 
                 current_dir.x -= current_dir.y * slippage_model.adjustment_angle;
                 current_dir.y += current_dir.x * slippage_model.adjustment_angle;
-                normalize_vector(&mut current_dir);
+                normalize_vector(current_dir);
 
                 slippage_model.current_distance = 0.0;
                 slippage_model.last_adjustment_distance = model.distance_covered;
@@ -235,7 +235,7 @@ impl InbalanceModel {
 fn handle_wheel_inbalance(
     model: &mut SimModel,
     inbalance_model: &mut InbalanceModel,
-    mut current_dir: &mut Vector,
+    current_dir: &mut Vector,
 ) {
     // Update the wheel inbalance model
     if model.wheel_inbalance
@@ -245,7 +245,7 @@ fn handle_wheel_inbalance(
         inbalance_model.last_adjustment_distance = model.distance_covered;
         current_dir.x -= current_dir.y * inbalance_model.adjustment_angle;
         current_dir.y += current_dir.x * inbalance_model.adjustment_angle;
-        normalize_vector(&mut current_dir);
+        normalize_vector(current_dir);
 
         if model.verbosity > 2 {
             println!(
@@ -385,14 +385,14 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
             (coverage_cell_count, current_coverage_percent) = model.grid.as_ref().expect(ERROR_MSG).get_coverage();
 
             print_progress(
-                &model,
+                model,
                 frame_counter,
                 current_coverage_percent,
                 coverage_cell_count,
             );
         }
 
-        if model.generate_frames && model.sim_steps % model.steps_per_frame == 0 {
+        if model.generate_frames && (model.sim_steps % model.steps_per_frame) == 0 {
             if frame_counter % model.animation_speedup == 0 {
                 let frame_filename = format!(
                     "{}/frame_{:07}.png",

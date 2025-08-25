@@ -1,6 +1,6 @@
 [package]
 name = "gridcover"
-version = "2.4.0"
+version = "2.5.0-beta"
 edition = "2024"
 
 [dependencies]
@@ -25,6 +25,8 @@ glob = "0.3.3"
 imageproc = { version = "0.25.0", default-features = false }
 ab_glyph = "0.2"
 rusttype = "0.9"
+sys-info = "0.9.1"
+sysinfo = { version = "0.37.0", features = ["process"] }
 
 [profile.release]
 opt-level = 3

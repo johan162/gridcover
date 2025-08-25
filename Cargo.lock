@@ -493,7 +493,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gridcover"
-version = "2.4.0"
+version = "2.5.0-beta"
 dependencies = [
  "ab_glyph",
  "chrono",
@@ -513,6 +513,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "shell-words",
+ "sys-info",
  "thousands",
  "toml 0.9.5",
  "toml_write",
@@ -1395,6 +1396,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "sys-info"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b3a0d0aba8bf96a0e1ddfdc352fc53b3df7f39318c71854910c3c4b024ae52c"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]
