@@ -104,6 +104,11 @@ pub struct SimModel {
     pub save_quad_tree: bool,
     pub show_image_label: bool,
     pub generate_json_files: bool,
+    pub in_memory_frames: bool,
+    pub mem_frames: Option<Vec<image::RgbImage>>,
+    pub mem_frame_index: usize,
+    pub ram_size: f64,
+    pub ram_usage: f64,
 }
 
 // Define a constant for the simulation step size factor
@@ -176,6 +181,9 @@ impl SimModel {
         save_quad_tree: bool,
         show_image_label: bool,
         generate_json_files: bool,
+        in_memory_frames: bool,
+        ram_size: f64,
+        ram_usage: f64,
     ) -> Self {
         Self {
             start_x,
@@ -262,6 +270,11 @@ impl SimModel {
             save_quad_tree,
             show_image_label,
             generate_json_files,
+            in_memory_frames,
+            mem_frames: None,
+            mem_frame_index: 0,
+            ram_size,
+            ram_usage,
         }
     }
 
@@ -329,6 +342,9 @@ impl SimModel {
             args.save_quad_tree,
             args.show_image_label,
             args.generate_json_files,
+            args.in_memory_frames,
+            0.0,
+            0.0
         )
     }
 
@@ -384,6 +400,7 @@ impl SimModel {
                     "HW Encoding": self.hw_encoding,
                     "Delete Frames": self.delete_frames,
                     "Animation Speedup": self.animation_speedup,
+                    "In-Memory Frames": self.in_memory_frames,
                 },
                 "Start": {
                     "Position": {
@@ -932,6 +949,8 @@ pub fn init_model(
             // We need to generate a frame every n:th step to get as close as possible to the frame rate
             model.steps_per_frame *=
                 (model.velocity / model.frame_rate as f64 / model.step_size).ceil() as u64;
+
+            // println!(" ---> Steps per frame: {}", model.steps_per_frame); 
 
             // Give a warning that the step size is too large and we might not get the desired frame rate
             let effective_frame_rate =

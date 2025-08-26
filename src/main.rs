@@ -24,9 +24,9 @@ use model::{SimModel, init_model};
 use rand::Rng;
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
+use sysinfo::{Pid, System};
 use vector::Vector;
 use video::try_video_encoding;
-use sysinfo::{ProcessExt, System, SystemExt, Pid};
 
 fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &mut SimModel) {
     // Check if we should randomize the start position
@@ -189,18 +189,25 @@ fn try_create_animation(model: &mut SimModel) {
     }
 }
 
-fn get_total_ram_in_mb() -> f64 {
+fn init_in_memory_frames(model: &mut SimModel) {
+    if model.in_memory_frames {
+        model.mem_frames = Some(Vec::new());
+        // Preallocate room for 2000 frames
+        model.mem_frames.as_mut().unwrap().reserve(2000);
+        model.mem_frame_index = 0;
+    }
+}
+
+fn get_total_ram_in_gb() -> f64 {
     let memory = sys_info::mem_info().unwrap();
     memory.total as f64 / 1024.0 / 1024.0
 }
 
 fn get_process_rss_mb() -> f64 {
-    let mut sys = System::new_all();
-    let pid = Pid::from(std::process::id());
-    sys.refresh_process(pid);
+    let sys = System::new_all();
+    let pid = Pid::from(std::process::id() as usize);
     if let Some(p) = sys.process(pid) {
-        // p.memory() -> amount of physical memory used (kilobytes)
-        p.memory() as f64 / 1024.0
+        p.memory() as f64 / 1024.0 / 1024.0
     } else {
         0.0
     }
@@ -248,6 +255,15 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    // Get total available memory (in GB)
+    model.ram_size = get_total_ram_in_gb().round();
+
+    // Get current RAM usage (in GB)
+    model.ram_usage = get_process_rss_mb().round();
+
+    // Initialize in-memory frames if needed
+    init_in_memory_frames(&mut model);
 
     // Load the optional specified map file with all obstacles
     load_optional_mapfile(&args, &mut model);
@@ -301,7 +317,7 @@ fn main() {
     try_store_result_to_db(&args, &model);
 
     // Save the final image if this has been requested
-    try_save_image(&model, None);
+    try_save_image(&mut model, None);
 
     // If we should create an animation video then do so
     try_create_animation(&mut model);

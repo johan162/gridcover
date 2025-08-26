@@ -4,9 +4,10 @@ use crate::image::try_save_image;
 use crate::model::SimModel;
 use crate::strategy::cutter_strategy;
 use crate::vector::Vector;
-// use colored::Colorize;
 use rand::Rng;
 use std::io::Write;
+use thousands::Separable;
+// use thousands::Separable;
 
 pub const FAILSAFE_TIME_LIMIT: f64 = 7.0 * 24.0 * 3600.0; // 7 days in simulated time to prevent infinite loop
 
@@ -24,7 +25,7 @@ fn normalize_vector(v: &mut Vector) {
 
 fn print_progress(
     model: &SimModel,
-    frame_counter: u64,
+    frame_image_numbering: u64,
     current_coverage_percent: f64,
     coverage_cell_count: usize,
 ) {
@@ -33,7 +34,7 @@ fn print_progress(
             if model.generate_frames {
                 print!(
                     "\rFrame: {:>06}, Coverage: {:>6.2}% ({:>7}/{:>7} cells covered), Distance: {:>6.2}, Bounces: {:>4}, Sim-Time: {:02}:{:02}:{:02}, Battery capacity left: {:>5.1}%",
-                    frame_counter,
+                    frame_image_numbering,
                     current_coverage_percent,
                     coverage_cell_count,
                     model.grid_cells_x * model.grid_cells_y - model.grid_cells_obstacles_count,
@@ -55,13 +56,13 @@ fn print_progress(
                     model.sim_time_elapsed as u64 / 3600,
                     (model.sim_time_elapsed as u64 % 3600) / 60,
                     model.sim_time_elapsed as u64 % 60,
-                    model.battery_charge_left
+                    model.battery_charge_left,
                 );
             }
         } else if model.generate_frames {
             print!(
                 "\rFrame: {:>06}, Coverage: {:>6.2}% ({:>7}/{:>7} cells covered), Distance: {:>6.2}, Bounces: {:>4}, Sim-Time: {:02}:{:02}:{:02}",
-                frame_counter,
+                frame_image_numbering,
                 current_coverage_percent,
                 coverage_cell_count,
                 model.grid_cells_x * model.grid_cells_y - model.grid_cells_obstacles_count,
@@ -82,6 +83,13 @@ fn print_progress(
                 model.sim_time_elapsed as u64 / 3600,
                 (model.sim_time_elapsed as u64 % 3600) / 60,
                 model.sim_time_elapsed as u64 % 60,
+            );
+        }
+        if model.in_memory_frames {
+            print!(
+                ", Memory: {:>5} MB/{:>3} GB",
+                model.ram_usage.separate_with_commas(),
+                model.ram_size
             );
         }
         std::io::stdout().flush().unwrap();
@@ -191,7 +199,7 @@ fn handle_wheel_slippage(
                 slippage_model.current_distance = 0.0;
                 slippage_model.last_adjustment_distance = model.distance_covered;
 
-                if model.verbosity > 2 {
+                if model.verbosity > 3 {
                     println!(
                         "\nSlippage activated at distance: {:.4},  with angle: {:.4}, radius {:.4}, length:{:.4}",
                         slippage_model.last_adjustment_distance,
@@ -247,7 +255,7 @@ fn handle_wheel_inbalance(
         current_dir.y += current_dir.x * inbalance_model.adjustment_angle;
         normalize_vector(current_dir);
 
-        if model.verbosity > 2 {
+        if model.verbosity > 3 {
             println!(
                 "\nInbalance activated at distance: {:.4},  with angle: {:.4}, radius {:.4}, length:{:.4}",
                 inbalance_model.last_adjustment_distance,
@@ -289,7 +297,31 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
     let total_cells = model.grid_cells_x * model.grid_cells_y;
     let one_percent_cells = total_cells / 100;
     let steps_per_cell = (model.cell_size / model.step_size).ceil() as usize;
-    let steps_per_tenth_percent = (one_percent_cells * steps_per_cell / 10).min(1) as u64;
+    let steps_per_tenth_percent = (((one_percent_cells * steps_per_cell) / 10) as u64).max(1);
+
+    if model.verbosity > 2 {
+        println!(" --> Total Cells: {}", total_cells.separate_with_commas());
+        println!(
+            " --> One Percent Cells: {}",
+            one_percent_cells.separate_with_commas()
+        );
+        println!(
+            " --> Steps per Cell: {}",
+            steps_per_cell.separate_with_commas()
+        );
+        println!(
+            " --> Steps per Tenth Percent: {}",
+            steps_per_tenth_percent.separate_with_commas()
+        );
+        println!(
+            " --> Steps per frame: {}",
+            model.steps_per_frame.separate_with_commas()
+        );
+        println!(" --> Model velocity: {}", model.velocity);
+        println!(" --> Model step size: {}", model.step_size);
+        println!(" --> Model frame rate: {}", model.frame_rate);
+    }
+
     let mut frame_counter: u64 = 0;
     let mut frame_image_numbering = 0;
 
@@ -380,24 +412,35 @@ pub fn simulation_loop(model: &mut SimModel, rng: &mut impl Rng) {
 
         time_since_last_charge = handle_battery_charge(model, time_since_last_charge, rng);
 
-        if model.sim_steps == 1 || 
-            model.sim_steps % steps_per_tenth_percent == 0 {
-            (coverage_cell_count, current_coverage_percent) = model.grid.as_ref().expect(ERROR_MSG).get_coverage();
+        if model.sim_steps == 1 || (model.sim_steps % steps_per_tenth_percent) == 0 {
+            (coverage_cell_count, current_coverage_percent) =
+                model.grid.as_ref().expect(ERROR_MSG).get_coverage();
 
             print_progress(
                 model,
-                frame_counter,
+                frame_image_numbering,
                 current_coverage_percent,
                 coverage_cell_count,
             );
         }
 
+        if model.sim_steps % 2000 == 0 {
+            // Update RAM usage every 2000 steps
+            model.ram_usage = crate::get_process_rss_mb().round();
+        }
+
         if model.generate_frames && (model.sim_steps % model.steps_per_frame) == 0 {
             if frame_counter % model.animation_speedup == 0 {
-                let frame_filename = format!(
-                    "{}/frame_{:07}.png",
-                    model.frames_dir, frame_image_numbering
-                );
+                // If we are storing frames in memory, we use the reserved filename "MEMORY"
+                let frame_filename;
+                if model.in_memory_frames {
+                    frame_filename = "MEMORY".to_string();
+                } else {
+                    frame_filename = format!(
+                        "{}/frame_{:07}.png",
+                        model.frames_dir, frame_image_numbering
+                    );
+                }
                 frame_image_numbering += 1;
                 try_save_image(model, Some(frame_filename));
             }

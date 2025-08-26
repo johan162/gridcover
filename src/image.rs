@@ -14,7 +14,7 @@ mod font_dejavusansbold;
 use crate::image::font_dejavusansbold::DEJAVUSANS_BOLD;
 
 #[allow(clippy::collapsible_if)]
-pub fn try_save_image(model: &SimModel, override_filename: Option<String>) {
+pub fn try_save_image(model: &mut SimModel, override_filename: Option<String>) {
     if model.image_file_name.is_some() || override_filename.is_some() {
         if let Err(err) = save_grid_image(model, override_filename) {
             eprintln!(
@@ -28,7 +28,7 @@ pub fn try_save_image(model: &SimModel, override_filename: Option<String>) {
 
 /// Create a PNG image of the coverage grid with colored squares
 fn save_grid_image(
-    model: &crate::model::SimModel,
+    model: &mut SimModel,
     override_filename: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get the color theme
@@ -40,13 +40,19 @@ fn save_grid_image(
 
 /// Create a PNG image of the coverage grid with colored squares using a specific theme
 fn save_grid_image_with_theme(
-    model: &crate::model::SimModel,
+    model: &mut SimModel,
     override_filename: Option<String>,
     theme: &ColorTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let img = create_grid_image_in_memory_with_theme(model, theme)?;
     if let Some(filename) = override_filename {
-        img.save(filename)?;
+        // If filename is the reserved name "MEMORY" then we push the image on to the image vector in memory
+        if filename == "MEMORY" {
+            model.mem_frames.as_mut().unwrap().push(img);
+            model.mem_frame_index += 1;
+        } else {
+            img.save(filename)?;
+        }
     } else {
         img.save(model.image_file_name.as_ref().unwrap())?;
     }
@@ -54,7 +60,7 @@ fn save_grid_image_with_theme(
     Ok(())
 }
 
-/// Create an in-memory RGB image of the coverage grid
+/// Create an in-memory RGB image of the coverage grid using the default theme
 #[allow(dead_code)]
 pub fn create_grid_image_in_memory(
     model: &SimModel,

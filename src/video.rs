@@ -7,7 +7,17 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
+
 pub fn try_video_encoding(model: &mut SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
+    if model.in_memory_frames {
+        println!("In-memory frames detected, skipping video encoding.");
+        Ok(Duration::zero())
+    } else {
+        try_video_encoding_cli(model)
+    }
+}
+
+pub fn try_video_encoding_cli(model: &mut SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
     let mut duration: Duration = Duration::zero();
     if model.create_animation {
         is_ffmpeg_installed()?;

@@ -527,6 +527,11 @@ pub struct Args {
     /// Store zsh completion in "/usr/local/share/zsh/site-functions" and bash completion in "/usr/local/share/bash-completion/completions"
     #[arg(long, action = clap::ArgAction::SetTrue)]
     pub generate_completions: bool,
+
+    // Use in-memory frames for animation
+    #[arg(short = 'I', long, default_value_t = false, action = clap::ArgAction::Set)]
+    pub in_memory_frames: bool,
+
 }
 
 
@@ -601,6 +606,7 @@ impl Args {
             show_image_label: if self.show_image_label { self.show_image_label } else { other.show_image_label },
             generate_json_files: if self.generate_json_files { self.generate_json_files } else { other.generate_json_files },
             generate_completions: if self.generate_completions { self.generate_completions } else { other.generate_completions },
+            in_memory_frames: if self.in_memory_frames { self.in_memory_frames } else { other.in_memory_frames },
         }
     }
 }
