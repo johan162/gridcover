@@ -1,6 +1,8 @@
 use crate::model::SimModel;
 use chrono::Duration;
 use colored::Colorize;
+use ffmpeg_next as ffmpeg;
+use image::RgbImage;
 use std::error::Error;
 use std::fs;
 use std::io::Write;
@@ -10,14 +12,136 @@ use std::process::Command;
 
 pub fn try_video_encoding(model: &mut SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
     if model.in_memory_frames {
-        println!("In-memory frames detected, skipping video encoding.");
-        Ok(Duration::zero())
+        if model.create_animation {
+            if let Some(ref frames) = model.mem_frames {
+                create_video_direct(model, frames)?;
+            } else {
+                return Err("No frames available in memory".into());
+            }
+            Ok(Duration::zero())  // Or measure time if needed
+        } else {
+            println!("In-memory frames detected, but animation creation is disabled.");
+            Ok(Duration::zero())
+        }
     } else {
         try_video_encoding_cli(model)
     }
 }
 
-pub fn try_video_encoding_cli(model: &mut SimModel) -> Result<Duration, Box<dyn std::error::Error>> {
+pub fn create_video_direct(
+    model: &SimModel,
+    frames: &Vec<RgbImage>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize FFmpeg
+    ffmpeg::init().unwrap();
+    
+    // Get output filename - use model.animation_file_name as base and ensure .mp4 extension
+    let output_filename = if model.animation_file_name.ends_with(".mp4") {
+        model.animation_file_name.clone()
+    } else {
+        format!("{}.mp4", model.animation_file_name)
+    };
+    
+    if !model.quiet {
+        println!(
+            "{}",
+            format!("Creating video directly from {} frames at {} FPS using HEVC encoding...", 
+                frames.len(), model.frame_rate)
+                .color(colored::Color::Green)
+                .bold()
+        );
+    }
+    
+    if frames.is_empty() {
+        return Err("No frames provided for video creation".into());
+    }
+    
+    let first_frame = &frames[0];
+    let _width = first_frame.width();
+    let _height = first_frame.height();
+    
+    // For now, let's use a simple approach - save frames temporarily and use CLI approach
+    // This is a fallback until we can get the direct ffmpeg API working correctly
+    
+    // Create temporary directory for frames
+    let temp_dir = std::env::temp_dir().join(format!("gridcover_frames_{}", std::process::id()));
+    std::fs::create_dir_all(&temp_dir)?;
+    
+    // Save all frames as temporary PNG files
+    for (i, frame) in frames.iter().enumerate() {
+        let frame_path = temp_dir.join(format!("frame_{:06}.png", i));
+        frame.save(&frame_path)?;
+    }
+    
+    // Use ffmpeg CLI to create video from the temporary frames
+    let temp_pattern = temp_dir.join("frame_%06d.png");
+    let temp_pattern_str = temp_pattern.to_str().ok_or("Invalid path encoding")?;
+    
+    // Determine the encoder to use (similar to the CLI approach)
+    let encoder = if cfg!(target_os = "macos") {
+        "hevc_videotoolbox"
+    } else {
+        "libx265"  // Software fallback
+    };
+    
+    let video_cmd_output = std::process::Command::new("ffmpeg")
+        .args([
+            "-y", // Overwrite output file
+            "-framerate",
+            &model.frame_rate.to_string(),
+            "-i",
+            temp_pattern_str,
+            "-c:v",
+            encoder,
+            "-pix_fmt",
+            "yuv420p",
+            &output_filename,
+        ])
+        .output()?;
+
+    // Clean up temporary directory
+    std::fs::remove_dir_all(&temp_dir).ok(); // Ignore errors during cleanup
+    
+    if !video_cmd_output.status.success() {
+        // Try software encoding fallback
+        let video_cmd_output = std::process::Command::new("ffmpeg")
+            .args([
+                "-y", // Overwrite output file
+                "-framerate",
+                &model.frame_rate.to_string(),
+                "-i",
+                temp_pattern_str,
+                "-c:v",
+                "libx265",
+                "-allow_sw", "1",
+                "-pix_fmt",
+                "yuv420p",
+                &output_filename,
+            ])
+            .output()?;
+            
+        if !video_cmd_output.status.success() {
+            let stderr = String::from_utf8_lossy(&video_cmd_output.stderr);
+            return Err(format!("FFmpeg failed to create video: {}", stderr).into());
+        }
+    }
+    
+    if !model.quiet {
+        println!(
+            "{} {}",
+            "Video created successfully:".color(colored::Color::Green).bold(),
+            output_filename.color(colored::Color::Cyan).bold()
+        );
+    }
+    
+    Ok(())
+}
+
+
+
+pub fn try_video_encoding_cli(
+    model: &mut SimModel,
+) -> Result<Duration, Box<dyn std::error::Error>> {
     let mut duration: Duration = Duration::zero();
     if model.create_animation {
         is_ffmpeg_installed()?;
@@ -356,3 +480,4 @@ fn get_encoder(model: &SimModel) -> Result<&'static str, Box<dyn Error>> {
     };
     Ok(encoder)
 }
+

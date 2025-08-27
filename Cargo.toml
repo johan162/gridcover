@@ -27,6 +27,7 @@ ab_glyph = "0.2"
 rusttype = "0.9"
 sys-info = "0.9.1"
 sysinfo = { version = "0.37.0" }
+ffmpeg-next = "7.1.0"
 
 [profile.release]
 opt-level = 3
