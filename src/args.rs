@@ -336,7 +336,7 @@ pub struct Args {
     pub frame_rate: u64,
 
     // Specify directory to save frames for animation
-    #[arg(long, default_value = "frames_dir", value_name = "FRAMES-DIR")]
+    #[arg(long, default_value = "_frames_dir", value_name = "FRAMES-DIR")]
     pub frames_dir: String,
 
     /// Generate an animation video from the frames
