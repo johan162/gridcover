@@ -930,7 +930,7 @@ pub fn init_model(
     // If frame generation is enabled we must adjust step_size so it corresponds to the frame rate
 
     if model.generate_frames && model.frame_rate > 0 {
-        if fs::metadata(&model.frames_dir).is_ok() {
+        if !model.in_memory_frames && fs::metadata(&model.frames_dir).is_ok() {
             return Err(format!(
                 "Output frame directory '{}' already exists. Please remove it or change the output directory.",
                 model.frames_dir
@@ -950,7 +950,7 @@ pub fn init_model(
             model.steps_per_frame *=
                 (model.velocity / model.frame_rate as f64 / model.step_size).ceil() as u64;
 
-            // println!(" ---> Steps per frame: {}", model.steps_per_frame); 
+            // println!(" ---> Steps per frame: {}", model.steps_per_frame);
 
             // Give a warning that the step size is too large and we might not get the desired frame rate
             let effective_frame_rate =
@@ -969,18 +969,20 @@ pub fn init_model(
             model.step_size = model.velocity / model.frame_rate as f64;
         }
 
-        fs::create_dir_all(&model.frames_dir).map_err(|e| {
-            format!(
-                "{}: {}",
+        if !model.in_memory_frames {
+            fs::create_dir_all(&model.frames_dir).map_err(|e| {
                 format!(
-                    "Failed to create output frame directory '{}'",
-                    model.frames_dir
+                    "{}: {}",
+                    format!(
+                        "Failed to create output frame directory '{}'",
+                        model.frames_dir
+                    )
+                    .color(colored::Color::Red)
+                    .bold(),
+                    e
                 )
-                .color(colored::Color::Red)
-                .bold(),
-                e
-            )
-        })?;
+            })?;
+        }
     }
 
     // Use the user-defined start position
