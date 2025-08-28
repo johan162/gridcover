@@ -1,29 +1,30 @@
-# Release Notes for v2.4.0 (since v2.3.0)
+# Release Notes for v2.5.0 (since v2.4.0)
 
 ## Summary
 
-This is mostly a cleanup release focusing on increasing internal maintainability and bumping
-all external dependencies to latest versions. Also, some default argument values have been tweaked.
+This is a feature release which speeds up the creation of animation by offering a all-in-memory video creation. 
+
 
 ## ✨  User visible New Features 
 
-**Feature 1**
-Description
+**In memory animation**
+The additional flag `in-memory-animation` was introduced. This will save all frames in-memory instead of disk to create the animation video.
+As a (very) rough rule of thumb you need 1GB of RAM for eery 4-5min of animation. For large complex obstacle maps this could easily double.
+When this flag is enabled the percentage memory used will be shown in the progress information as a guidline.
 
 
 ## 🚀 Improvements
 
-**Sim loop refactoring**
-Simplify the main sim loop by refactoring all logical parts into separate functions and modules
+** **
+
 
 
 ## 🐛 Bug Fixes
 - xx
 
-## 🛠  Build system
-- Optimize the dev-container spec to avoid double inclusion of vs-code extensions already loaded by the
-Rust feature. Include scc & xxd in the container from start.
-- Tweaking the `gen_font_data.sh` script to increase maintainability.
+## 🛠  Build system & Internal changes
+- Further herdening of the `gen_font_data.sh` script to increase maintainability and hardening.
+- Refactored the main() function to ease maintenance
 
 
 ## 📚 Documentation
