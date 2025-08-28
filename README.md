@@ -601,3 +601,6 @@ Estimated People Required (organic) 2.80<br />
 ./target/release/gridcover -M assets/maps/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 95 -R false --verbosity 2 --use-quad-tree false -s 0.01 | grep -e "Collision Checks" -e "CPU"
 ```
 
+```sh
+./target/release/gridcover -M assets/maps/mapex01.yaml -o coverage.png --show-quad-tree true -S 385925 -c 40 -R true --verbosity 1 --use-quad-tree true -s 0.01 --in-memory-frames true -a true
+```
