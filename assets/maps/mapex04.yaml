@@ -1,0 +1,160 @@
+# Example map file for GridCover
+name: "My Backyard"
+description: "A backyard with a pond and patio"
+
+grid:
+  width: 40 
+  height: 75 
+
+obstacles:
+  # Rectangle obstacles (x, y are bottom-left coordinates)
+  - type: rectangle
+    x: 10
+    y: 13
+    width: 11
+    height: 8
+    name: "House"
+    
+  # Rectangle obstacles (x, y are bottom-left coordinates)
+  - type: rectangle
+    x: 10
+    y: 21
+    width: 4
+    height: 2
+    name: "Stairs"
+
+  # Rectangle obstacles (x, y are bottom-left coordinates)
+  - type: rectangle
+    x: 14
+    y: 21
+    width: 7
+    height: 5
+    name: "Altan"
+
+  # Rectangle obstacles (x, y are bottom-left coordinates)
+  - type: rectangle
+    x: 13
+    y: 9.5
+    width: 4
+    height: 3.5
+    name: "Veranda"
+
+  - type: circle
+    x: 21
+    y: 55
+    radius: 1.5
+    name: "Birch"
+
+  - type: rectangle
+    x: 14
+    y: 52
+    width: 4
+    height: 10
+    name: "House1"
+
+  - type: rectangle
+    x: 5
+    y: 64
+    width: 11
+    height: 5
+    name: "House2"
+
+  - type: circle
+    x: 30
+    y: 41
+    radius: 0.7
+    name: "SV1"
+
+  - type: circle
+    x: 32
+    y: 41
+    radius: 0.7
+    name: "SV2"
+  
+  - type: circle
+    x: 34
+    y: 41
+    radius: 0.7
+    name: "SV3"
+
+  - type: circle
+    x: 36
+    y: 41
+    radius: 0.7
+    name: "SV4"
+
+  - type: circle
+    x: 30
+    y: 38
+    radius: 0.7
+    name: "SV5"
+
+  - type: circle
+    x: 32
+    y: 38
+    radius: 0.7
+    name: "SV6"
+
+  - type: circle
+    x: 34
+    y: 38
+    radius: 0.7
+    name: "SV7"
+
+  - type: circle
+    x: 36
+    y: 38
+    radius: 0.7
+    name: "SV8"
+
+  - type: rectangle
+    x: 26
+    y: 40
+    width: 1.8
+    height: 1.8
+    name: "Rub1"
+
+  - type: rectangle
+    x: 26
+    y: 37
+    width: 1.8
+    height: 1.8
+    name: "Rub2"
+
+  - type: circle
+    x: 35
+    y: 60
+    radius: 0.5
+    name: "Cherry1"
+
+  - type: rectangle
+    x: 21
+    y: 65
+    width: 4
+    height: 8
+    name: "Cellar"
+
+  - type: circle
+    x: 39
+    y: 20
+    radius: 2
+    name: "Jasmin"
+
+  - type: circle
+    x: 35
+    y: 10
+    radius: 0.5
+    name: "Apple1"
+
+  - type: circle
+    x: 37
+    y: 4
+    radius: 0.5
+    name: "Apple2"
+
+  - type: rectangle
+    x: 5
+    y: 0
+    width: 5
+    height: 20
+    name: "Parking"
