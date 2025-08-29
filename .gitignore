@@ -22,3 +22,9 @@ scripts/*.rs
 docs/scc.md
 model.json
 result.json
+ignore*
+/_gridcover
+/gridcover.bash
+args.std
+
+
