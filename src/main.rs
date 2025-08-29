@@ -10,6 +10,8 @@ mod strategy;
 mod vector;
 mod video;
 
+use std::fs;
+
 use args::{read_args_from_file, write_args_to_file};
 use clap::{CommandFactory, Parser};
 use clap_complete::{
@@ -20,13 +22,13 @@ use colored::Colorize;
 use db::try_store_result_to_db;
 use image::try_save_image;
 use mapfile::{load_optional_mapfile, try_apply_mapfile_to_model};
-use model::{SimModel, init_model};
+use model::{SimModel, init_model, try_delete_frames_dir};
 use rand::Rng;
 use rand::SeedableRng;
 use sim::{FAILSAFE_TIME_LIMIT, simulation_loop};
+use sysinfo::{Pid, System};
 use vector::Vector;
 use video::try_video_encoding;
-use sysinfo::{ProcessExt, System, SystemExt, Pid};
 
 fn set_optional_random_start_position(rng: &mut rand::prelude::StdRng, model: &mut SimModel) {
     // Check if we should randomize the start position
@@ -187,20 +189,32 @@ fn try_create_animation(model: &mut SimModel) {
     if ffmpeg_encoding_duration != chrono::Duration::zero() {
         model.ffmpeg_encoding_duration = Some(ffmpeg_encoding_duration);
     }
+
+    // Try to cleanup the frames directory if it still exists
+    if fs::metadata(&model.frames_dir).is_ok() && model.delete_frames {
+        try_delete_frames_dir(model).unwrap_or_else(|err| {
+            eprintln!(
+                "{} {}",
+                "Error: Failed to delete frames directory:"
+                    .color(colored::Color::Red)
+                    .bold(),
+                err
+            );
+            // std::process::exit(1);
+        });
+    }
 }
 
-fn get_total_ram_in_mb() -> f64 {
+fn get_total_ram_in_gb() -> f64 {
     let memory = sys_info::mem_info().unwrap();
     memory.total as f64 / 1024.0 / 1024.0
 }
 
 fn get_process_rss_mb() -> f64 {
-    let mut sys = System::new_all();
-    let pid = Pid::from(std::process::id());
-    sys.refresh_process(pid);
+    let sys = System::new_all();
+    let pid = Pid::from(std::process::id() as usize);
     if let Some(p) = sys.process(pid) {
-        // p.memory() -> amount of physical memory used (kilobytes)
-        p.memory() as f64 / 1024.0
+        p.memory() as f64 / 1024.0 / 1024.0
     } else {
         0.0
     }
@@ -248,6 +262,9 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    model.ram_size_gb = get_total_ram_in_gb().round();
+    model.ram_usage_mb = get_process_rss_mb().round();
 
     // Load the optional specified map file with all obstacles
     load_optional_mapfile(&args, &mut model);

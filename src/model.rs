@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 
 use crate::model::grid::Grid;
@@ -104,6 +105,8 @@ pub struct SimModel {
     pub save_quad_tree: bool,
     pub show_image_label: bool,
     pub generate_json_files: bool,
+    pub ram_size_gb: f64,
+    pub ram_usage_mb: f64,
 }
 
 // Define a constant for the simulation step size factor
@@ -176,6 +179,8 @@ impl SimModel {
         save_quad_tree: bool,
         show_image_label: bool,
         generate_json_files: bool,
+        ram_size_gb: f64,
+        ram_usage_mb: f64,
     ) -> Self {
         Self {
             start_x,
@@ -262,6 +267,8 @@ impl SimModel {
             save_quad_tree,
             show_image_label,
             generate_json_files,
+            ram_size_gb,
+            ram_usage_mb,
         }
     }
 
@@ -329,6 +336,8 @@ impl SimModel {
             args.save_quad_tree,
             args.show_image_label,
             args.generate_json_files,
+            0.0,
+            0.0,
         )
     }
 
@@ -507,7 +516,7 @@ impl SimModel {
                     },
                     "Wheel Slippage": self.wheel_slippage,
                 },
-                "Time": {
+                "Performance": {
                      "CPU time": format!("{:02}:{:02}:{:02}.{:03}",
                         self.cpu_time.num_hours(),
                         self.cpu_time.num_minutes() % 60,
@@ -526,6 +535,8 @@ impl SimModel {
                         d.num_minutes() % 60,
                         d.num_seconds() % 60,
                         d.num_milliseconds() % 1000)),
+                    "RAM Total (GB)": self.ram_size_gb,
+                    "RAM Usage (MB)": self.ram_usage_mb,
                 },
                 "Start": {
                     "Position": {
@@ -760,6 +771,37 @@ fn json_to_console(json: &serde_json::Value, root_key: &str, indent: usize) {
     }
 }
 
+pub fn try_delete_frames_dir(model: &mut SimModel) -> Result<(), Box<dyn Error>> {
+    if model.delete_frames {
+        // Delete the entire output directory
+        if let Err(e) = fs::remove_dir_all(&model.frames_dir) {
+            Err(Box::new(std::io::Error::other(format!(
+                "{} '{}' : {}",
+                "Failed to delete frames directory"
+                    .color(colored::Color::Red)
+                    .bold(),
+                model.frames_dir.as_str(),
+                e
+            ))))?;
+        } else if !model.quiet && model.verbosity > 1 {
+            println!(
+                "{}",
+                "Frames directory deleted successfully."
+                    .color(colored::Color::Green)
+                    .bold()
+            );
+        }
+    } else if !model.quiet && model.verbosity > 1 {
+        println!(
+            "{}",
+            "Frames are kept in the output directory."
+                .color(colored::Color::Green)
+                .bold()
+        );
+    };
+    Ok(())
+}
+
 fn set_initial_direction(args: &args::Args, rng: &mut impl Rng) -> (f64, f64, f64) {
     let mut current_dir_x = args.start_dir_x;
     let mut current_dir_y = args.start_dir_y;
@@ -913,6 +955,7 @@ pub fn init_model(
     // If frame generation is enabled we must adjust step_size so it corresponds to the frame rate
 
     if model.generate_frames && model.frame_rate > 0 {
+
         if fs::metadata(&model.frames_dir).is_ok() {
             return Err(format!(
                 "Output frame directory '{}' already exists. Please remove it or change the output directory.",
