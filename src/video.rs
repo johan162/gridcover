@@ -171,6 +171,8 @@ pub fn create_video_in_ram(
             .color(colored::Color::Green)
             .bold()
         );
+        // Flush I/O buffer
+        std::io::stdout().flush()?;
     }
 
     // Assume uniform size of all frames
@@ -181,9 +183,12 @@ pub fn create_video_in_ram(
     // Set up output format and context
     let mut output_context = ffmpeg::format::output(&output_filename)?;
 
-        // Find HEVC encoder
+    // Find HEVC encoder
     let encoder_codec =
         ffmpeg::encoder::find(ffmpeg::codec::Id::HEVC).ok_or("HEVC encoder not found")?;
+
+    // let encoder_codec =
+    //    ffmpeg::encoder::find(ffmpeg::codec::Id::H264).ok_or("H264 encoder not found")?;
 
     let mut stream = output_context.add_stream(encoder_codec)?;
     let mut encoder = ffmpeg::codec::Context::new().encoder().video()?;
@@ -194,6 +199,7 @@ pub fn create_video_in_ram(
     encoder.set_format(ffmpeg::format::Pixel::YUV420P);
     encoder.set_time_base(ffmpeg::Rational(1, model.frame_rate as i32));
     encoder.set_frame_rate(Some((model.frame_rate as i32, 1)));
+    encoder.set_bit_rate(400000); // Set a reasonable bit rate
 
     let mut encoder = encoder.open_as(encoder_codec)?;
     stream.set_parameters(&encoder);
@@ -213,7 +219,7 @@ pub fn create_video_in_ram(
     let stream_time_base = output_context.stream(stream_index).unwrap().time_base();
 
     // Write header
-    output_context.write_header()?;
+    output_context.write_header().unwrap();
 
     // Process each frame
     for (frame_idx, rgb_frame) in frames.iter().enumerate() {
@@ -246,17 +252,37 @@ pub fn create_video_in_ram(
         }
     }
 
-    // Flush encoder
+    // Flush encoder, Sends a NULL packet to the encoder to signal end of stream and enter draining mode
     encoder.send_eof()?;
     let mut packet = ffmpeg::packet::Packet::empty();
-    while encoder.receive_packet(&mut packet).is_ok() {
+    let mut drain_pts = frames.len() as i64;
+
+    let mut idx = 0;
+    // Drain the encoder
+    while idx <= 11 && encoder.receive_packet(&mut packet).is_ok() {
         packet.set_stream(stream_index);
+        packet.set_position(-1);
         packet.rescale_ts(encoder.time_base(), stream_time_base);
+        if packet.pts().is_none() {
+            packet.set_pts(Some(drain_pts));
+            drain_pts += 1;
+        }
+        if packet.dts().is_none() {
+            packet.set_dts(packet.pts());
+        }
         packet.write_interleaved(&mut output_context)?;
+        idx += 1;
     }
 
+    // // Drain the encoder
+    // while encoder.receive_packet(&mut packet).is_ok() { // <-- This line gives an Exception EXC_BAD_ACCESS,  x265::Lookahead::vbvLookahead(x265::Lowres**, int, int)
+    //     packet.set_stream(stream_index);
+    //     packet.rescale_ts(encoder.time_base(), stream_time_base);
+    //     packet.write_interleaved(&mut output_context).unwrap();
+    // }
+
     // Write trailer
-    output_context.write_trailer()?;
+    output_context.write_trailer().unwrap();
 
     if !model.quiet {
         println!(
