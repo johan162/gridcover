@@ -141,7 +141,7 @@ fn create_grid_image_in_memory_with_theme(
     let mut base_img_height_pixels = (model.image_height_mm as f64 * pixels_per_mm).round() as u32;
 
     if base_img_height_pixels < model.grid_cells_y as u32 {
-        if model.verbosity > 1 {
+        if model.verbosity > 3 {
             eprintln!(
                 "{} {} mm",
                 "Notice. Adjusting image height to fit grid height. New height at given DPI:"
@@ -154,7 +154,7 @@ fn create_grid_image_in_memory_with_theme(
     }
 
     if base_img_width_pixels < model.grid_cells_x as u32 {
-        if model.verbosity > 1 {
+        if model.verbosity > 3 {
             eprintln!(
                 "{} {} mm",
                 "Notice.! Adjusting image width to fit grid width. New width at given DPI:"
