@@ -167,7 +167,7 @@
          {
             "type": "lldb",
             "request": "launch",
-            "name": "animation",
+            "name": "in-mem animation",
             "cargo": {
                 "args": [
                     "build",
@@ -196,6 +196,41 @@
                 "0.01",
                 "--in-memory-frames",
                 "true",
+                "-a",
+                "true",
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+         {
+            "type": "lldb",
+            "request": "launch",
+            "name": "animation",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=gridcover",
+                    "--package=gridcover"
+                ],
+                "filter": {
+                    "name": "gridcover",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-M",
+                "assets/maps/mapex01.yaml",
+                "-o",
+                "covergae.png",
+                "-S",
+                "385925",
+                "-c",
+                "50",
+                "-R",
+                "false",
+                "--verbosity",
+                "0",
+                "-s",
+                "0.01",
                 "-a",
                 "true",
             ],
