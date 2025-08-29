@@ -239,7 +239,7 @@ pub struct Args {
          help = "Paper size to use for the output image. Options: 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'Letter', 'Legal'.",
          value_hint = clap::ValueHint::Other,
          ignore_case = true,
-         value_enum, default_value_t = PaperSize::A4)]
+         value_enum, default_value_t = PaperSize::A3)]
     pub paper_size: PaperSize,
 
     /// Add option to turn centerpoint tracking on or off
@@ -336,7 +336,7 @@ pub struct Args {
     pub frame_rate: u64,
 
     // Specify directory to save frames for animation
-    #[arg(long, default_value = "frames_dir", value_name = "FRAMES-DIR")]
+    #[arg(long, default_value = "_frames_dir", value_name = "FRAMES-DIR")]
     pub frames_dir: String,
 
     /// Generate an animation video from the frames
@@ -356,7 +356,7 @@ pub struct Args {
     pub hw_encoding: bool,
 
     /// Delete frames after animation has been created
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
     pub delete_frames: bool,
 
     /// Color theme to use as an string, possible values: "default", "green30", "blue", "high_contrast", "pure_green", "gray_green"
