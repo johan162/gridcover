@@ -4,7 +4,7 @@ version = "2.5.0-beta"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.46", features = ["derive"] }
 clap_complete = "4.5.38"
 rand = "0.9.2"
 colored = "3.0.0"
@@ -13,8 +13,8 @@ thousands = "0.2.0"
 image = "0.25.6"
 rayon = "1.11.0"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
-serde_yaml = "0.9.33"
+serde_json = "1.0.143"
+serde_yaml = "0.9.34-deprecated"
 toml = "0.9.5"
 toml_write = "0.1.2"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
@@ -26,7 +26,7 @@ imageproc = { version = "0.25.0", default-features = false }
 ab_glyph = "0.2"
 rusttype = "0.9"
 sys-info = "0.9.1"
-sysinfo = { version = "0.37.0", features = ["process"] }
+sysinfo = { version = "0.37.0"}
 
 [profile.release]
 opt-level = 3
